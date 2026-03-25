@@ -412,13 +412,34 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   .abtn{min-height:36px}
   .sb-item{min-height:44px}
 
-  /* Modal */
-  .mbox{max-height:95vh;border-radius:16px 16px 0 0;margin-top:auto}
+  /* Modal — full-screen sheet trên mobile */
+  .mbg{align-items:flex-end;padding:0}
+  .mbox{max-height:92vh;border-radius:16px 16px 0 0;margin-top:auto;max-width:100%}
   .mbox.sm{max-width:100%}
   .mbox.lg{max-width:100%}
-  .mbg{align-items:flex-end;padding:0}
-  .mhd{border-radius:16px 16px 0 0}
-  .mft{flex-wrap:wrap;gap:8px}
+  .mhd{border-radius:16px 16px 0 0;padding:12px 16px;position:sticky;top:0;z-index:10}
+  .mhd h2{font-size:14px}
+  .mbd{padding:12px 14px;-webkit-overflow-scrolling:touch}
+  .mft{flex-wrap:wrap;gap:6px;padding:10px 14px;position:sticky;bottom:0;z-index:10}
+  .mft-l{width:100%;text-align:center;font-size:11px}
+  .mft-r{width:100%;display:flex;gap:8px}
+  .mft-r .btn{flex:1;min-height:44px}
+  /* Form nhập điểm mobile */
+  .fsect{margin-bottom:10px}
+  .fsect-h h3{font-size:13px}
+  .fgrid{gap:6px}
+  .frow{padding:8px 10px;gap:4px}
+  .frow .flbl{font-size:11px;min-width:80px}
+  .rg{gap:2px}
+  .rg label span{font-size:10px;padding:5px 8px;min-height:32px;display:flex;align-items:center}
+  .diemw{gap:4px}
+  .diemw input{width:48px;height:32px;font-size:13px}
+  .fg2{grid-template-columns:1fr!important}
+  /* Kết quả tự động gọn */
+  .tt27{padding:10px}
+  .tt27g{grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .tt27i .tl{font-size:9px}
+  .tt27i .tv{font-size:11px}
 
   /* Khối tabs */
   .kts{gap:4px}
