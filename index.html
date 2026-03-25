@@ -1139,7 +1139,7 @@ function doLogout(){if(!confirm('Đăng xuất?'))return;localStorage.removeItem
 
 function parsePC(str){
   if(!str||!str.trim())return null;
-  var MM={'toán':'mon_Toán','tiếng việt':'mon_Tiếng_việt','đạo đức':'mon_Đạo_đức','tự nhiên và xã hội':'mon_Tự_nhiên_và_xã_hội','tnxh':'mon_Tự_nhiên_và_xã_hội','ngoại ngữ':'mon_Ngoại_ngữ','tiếng anh':'mon_Ngoại_ngữ','tin học':'mon_TH-CN_Tin_học','âm nhạc':'mon_Nghệ_thuật_Âm_nhạc','mĩ thuật':'mon_Nghệ_thuật_Mĩ_thuật','mỹ thuật':'mon_Nghệ_thuật_Mĩ_thuật','hđtn':'mon_Hoạt_động_trải_nghiệm','hdtn':'mon_Hoạt_động_trải_nghiệm','gdtc':'mon_Giáo_dục_thể_chất','thể chất':'mon_Giáo_dục_thể_chất','khoa học':'mon_Khoa_học','lịch sử và địa lí':'mon_Lịch_sử_và_Địa_lí','công nghệ':'mon_TH-CN_Công_nghệ'};
+  var MM={'toán':'mon_Toán','tiếng việt':'mon_Tiếng_việt','đạo đức':'mon_Đạo_đức','tự nhiên và xã hội':'mon_Tự_nhiên_và_xã_hội','tnxh':'mon_Tự_nhiên_và_xã_hội','ngoại ngữ':'mon_Ngoại_ngữ','tiếng anh':'mon_Ngoại_ngữ','nn':'mon_Ngoại_ngữ','tin học':'mon_TH-CN_Tin_học','th':'mon_TH-CN_Tin_học','âm nhạc':'mon_Nghệ_thuật_Âm_nhạc','an':'mon_Nghệ_thuật_Âm_nhạc','mĩ thuật':'mon_Nghệ_thuật_Mĩ_thuật','mỹ thuật':'mon_Nghệ_thuật_Mĩ_thuật','mt':'mon_Nghệ_thuật_Mĩ_thuật','hđtn':'mon_Hoạt_động_trải_nghiệm','hdtn':'mon_Hoạt_động_trải_nghiệm','gdtc':'mon_Giáo_dục_thể_chất','thể chất':'mon_Giáo_dục_thể_chất','tc':'mon_Giáo_dục_thể_chất','khoa học':'mon_Khoa_học','kh':'mon_Khoa_học','lịch sử và địa lí':'mon_Lịch_sử_và_Địa_lí','lịch sử - địa lí':'mon_Lịch_sử_và_Địa_lí','ls&đl':'mon_Lịch_sử_và_Địa_lí','ls-đl':'mon_Lịch_sử_và_Địa_lí','lịch sử và địa lý':'mon_Lịch_sử_và_Địa_lí','công nghệ':'mon_TH-CN_Công_nghệ','cn':'mon_TH-CN_Công_nghệ','tatc':'mon_Ngoại_ngữ','tv':'mon_Tiếng_việt','đđ':'mon_Đạo_đức'};
   var res={};
   str.split(/\s*\+\s*/).forEach(function(part){
     var m=part.match(/^(.+?)\s*\(([^)]+)\)/);if(!m)return;
@@ -2377,11 +2377,14 @@ function openM(idx){
   T('mStat').textContent=isDone(s)?'✅ Đã có':'⏳ Chưa nhập';
   var kq=cTT(s.ma,s.khoi),es=editSubs(s.lop);
   var isMM=curPeriod!=='cn';
-  var h=isMM?'':'<div class="tt27"><h4>🤖 Kết quả tự động</h4><div class="tt27g">';
-  h+='<div class="tt27i"><div class="tl">KQGD</div><div class="tv" id="t-kq">'+kqL(kq)+'</div></div>';
-  h+='<div class="tt27i"><div class="tl">Lên lớp</div><div class="tv" id="t-ll">'+(g.len_lop?blH(g.len_lop,g.len_lop==='Có'?'bl-ht':'bl-cht'):'—')+'</div></div>';
-  h+='<div class="tt27i"><div class="tl">Khen thưởng</div><div class="tv" id="t-kh">'+khenL(g,kq)+'</div></div>';
-  h+='</div></div>';
+  var h='';
+  if(!isMM){
+    h+='<div class="tt27"><h4>🤖 Kết quả tự động</h4><div class="tt27g">';
+    h+='<div class="tt27i"><div class="tl">KQGD</div><div class="tv" id="t-kq">'+kqL(kq)+'</div></div>';
+    h+='<div class="tt27i"><div class="tl">Lên lớp</div><div class="tv" id="t-ll">'+(g.len_lop?blH(g.len_lop,g.len_lop==='Có'?'bl-ht':'bl-cht'):'—')+'</div></div>';
+    h+='<div class="tt27i"><div class="tl">Khen thưởng</div><div class="tv" id="t-kh">'+khenL(g,kq)+'</div></div>';
+    h+='</div></div>';
+  }
   h+='<div class="fsect"><div class="fsect-h"><h3>📚 Môn học</h3></div><div class="fgrid">';
   sj.forEach(function(mn){
     var name=mn[0],mk=mn[1],dk=mn[2],hD=mn[3],mv=g[mk]||'',dv=dk?(g[dk]!==undefined?g[dk]:''):'';
@@ -2414,6 +2417,7 @@ function openM(idx){
     h+='<label class="o-ccg"><input type="radio" name="pc_'+pc[1]+'" value="CCG"'+(v==='CCG'?' checked':'')+'><span>CCG</span></label></div></div>';
   });
   h+='</div></div>';
+  if(!isMM){
   var ll=g.len_lop||'',tb2=g._tieubieu||'';
   h+='<div class="fsect"><div class="fsect-h"><h3>🎓 Lên lớp & Khen</h3></div><div class="fgrid fg2">';
   h+='<div class="frow"><div class="flbl">Lên lớp</div><div class="rg" onchange="onGC('+idx+')">';
@@ -2422,6 +2426,7 @@ function openM(idx){
   h+='<div class="frow"><div class="flbl">HS Tiêu biểu</div><div class="rg" onchange="onGC('+idx+')">';
   h+='<label class="o-xs"><input type="radio" name="r_tb" value="1"'+(tb2==='1'?' checked':'')+'><span>✓ Có</span></label>';
   h+='<label class="o-none"><input type="radio" name="r_tb" value=""'+(!tb2?' checked':'')+'><span>Không</span></label></div></div></div></div>';
+  }// end !isMM
   }// end canNLPC
   T('mBd').innerHTML=h;T('mBg').classList.add('on');
 }
@@ -3000,11 +3005,18 @@ function doChangePw(){
   if(!newPw||newPw.length<4){T('pwErr').textContent='⚠️ Mật khẩu mới ít nhất 4 ký tự';return;}
   if(newPw!==confirm2){T('pwErr').textContent='⚠️ Mật khẩu mới không khớp';return;}
   if(!GAS){T('pwErr').textContent='⚠️ Chưa kết nối server';return;}
-  loader('Đang đổi mật khẩu...');
-  gasPost({action:'changePassword',username:CU.username,oldPassword:oldPw,newPassword:newPw}).then(function(r){
+  loader('Đang xác minh...');
+  // Bước 1: Xác minh mật khẩu cũ bằng action login
+  gasCall({action:'login',username:CU.username,password:oldPw}).then(function(r){
+    if(!r.ok){loader();T('pwErr').textContent='❌ Mật khẩu hiện tại không đúng';return;}
+    // Bước 2: Đổi mật khẩu bằng action saveUser (đã có sẵn)
+    T('ldr-t').textContent='Đang đổi mật khẩu...';
+    return gasPost({action:'saveUser',username:CU.username,password:newPw});
+  }).then(function(r){
     loader();
-    if(r.ok){cm('pwBg');toast('✅ '+r.message,'ok');}
-    else{T('pwErr').textContent='❌ '+r.error;}
+    if(!r)return; // login failed, already handled
+    if(r.ok){cm('pwBg');toast('✅ Đổi mật khẩu thành công!','ok');}
+    else{T('pwErr').textContent='❌ '+(r.error||'Lỗi không xác định');}
   }).catch(function(e){loader();T('pwErr').textContent='❌ '+e.message;});
 }
 
