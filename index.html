@@ -1645,6 +1645,22 @@ function createMauChuan(){
   nldCols.forEach(function(n){h+='<td style="'+sOrange+'">'+n+'</td>';});
   h+='</tr>';
 
+  // ═══ ROW 4: HIDDEN KEY ROW (parser đọc dòng này để map chính xác 100%) ═══
+  var monKeys=['mon_Toán','mon_Tiếng_việt','mon_Đạo_đức','mon_Tự_nhiên_và_xã_hội','mon_Ngoại_ngữ','mon_Tiếng_dân_tộc','mon_TH-CN_Tin_học','mon_Nghệ_thuật_Âm_nhạc','mon_Nghệ_thuật_Mĩ_thuật','mon_Hoạt_động_trải_nghiệm','mon_Giáo_dục_thể_chất'];
+  var nlcKeys=['nl_Tự_chủ_và_tự_học','nl_Giao_tiếp_và_hợp_tác','nl_Giải_quyết_vấn_đề_và_sáng_tạo'];
+  var nldKeys=['nl_Ngôn_ngữ','nl_Tính_toán','nl_Khoa_học','nl_Thẩm_mĩ','nl_Thể_chất'];
+  var pcKeys=['pc_Yêu_nước','pc_Nhân_ái','pc_Chăm_chỉ','pc_Trung_thực','pc_Trách_nhiệm'];
+  var tailKeys=isCN?['hoan_thanh','len_lop','khen_thuong']:[];
+  var sHide='font-size:1pt;color:#fff;border:none;height:1px;';
+  h+='<tr height="1">';
+  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td><td style="'+sHide+'">_ns_</td>';
+  monKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  nlcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  nldKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  pcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  h+='</tr>';
+
   // DATA ROWS
   hsLop.forEach(function(s,i){
     var ns=String(s.ns||'');
@@ -1673,7 +1689,7 @@ function createMauChuan(){
   var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
     +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
     +'<x:Name>'+periodCode+'_Lop'+lop+'</x:Name>'
-    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>3</x:SplitHorizontal><x:TopRowBottomPane>3</x:TopRowBottomPane>'
+    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal><x:TopRowBottomPane>4</x:TopRowBottomPane>'
     +'<x:SplitVertical>5</x:SplitVertical><x:LeftColumnRightPane>5</x:LeftColumnRightPane></x:WorksheetOptions>'
     +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
     +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
@@ -1874,231 +1890,143 @@ function onDiemFile(inp){
 }
 
 function _parseDiemExcel(raw,lop){
-  function _a(s){return String(s||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\u0111\u0110]/g,'d').toLowerCase().replace(/\s+/g,' ');}
   var k=parseInt(lop);
-  var sj=_visibleSubj(k);
 
-  // ═══ TÌM HEADER ═══
-  var headerRow=-1;
-  for(var ri=0;ri<Math.min(raw.length,10);ri++){
-    var cells=(raw[ri]||[]).map(function(c){return _a(c);});
-    if(cells.some(function(c){return c==='stt'||c==='ma hoc sinh';})){headerRow=ri;break;}
+  // ═══ TÌM KEY ROW (ưu tiên) HOẶC HEADER ROW ═══
+  var keyRow=-1, headerRow=-1, dataStart=-1;
+  for(var ri=0;ri<Math.min(raw.length,15);ri++){
+    var first=String((raw[ri]||[])[0]||'').trim();
+    if(first==='__KEYS__'){keyRow=ri;dataStart=ri+1;break;}
+    if(first.toLowerCase()==='stt'&&headerRow<0) headerRow=ri;
   }
+
+  // ═══ PHƯƠNG PHÁP 1: KEY ROW (chính xác 100%) ═══
+  if(keyRow>=0){
+    var keys=raw[keyRow];
+    var colMap={};
+    var iMa=-1;
+    keys.forEach(function(v,ci){
+      var key=String(v||'').trim();
+      if(!key) return;
+      if(key==='_ma_'){iMa=ci;return;}
+      if(key.indexOf('mon_')===0||key.indexOf('nl_')===0||key.indexOf('pc_')===0||
+         key==='len_lop'||key==='hoan_thanh'||key==='khen_thuong'){
+        var type=key.indexOf('mon_')===0?'mon':(key==='len_lop'?'ll':'nlpc');
+        colMap[key]={ci:ci,key:key,type:type};
+      }
+    });
+    if(iMa<0){
+      for(var di=dataStart;di<Math.min(raw.length,dataStart+3);di++){
+        for(var fi=0;fi<(raw[di]||[]).length;fi++){
+          if(/^\d{8,}$/.test(String((raw[di]||[])[fi]||'').trim())){iMa=fi;break;}
+        }
+        if(iMa>=0)break;
+      }
+    }
+    if(iMa<0){toast('❌ Không tìm thấy cột Mã HS','err');return;}
+    console.log('KEY ROW: '+Object.keys(colMap).length+' cols, iMa='+iMa);
+    return _applyParsedData(raw,dataStart,iMa,colMap,lop,k);
+  }
+
+  // ═══ PHƯƠNG PHÁP 2: FUZZY (fallback) ═══
+  function _a(s){return String(s||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\u0111\u0110]/g,'d').toLowerCase().replace(/\s+/g,' ');}
   if(headerRow<0){
-    for(var ri=0;ri<8;ri++){
+    for(var ri=0;ri<10;ri++){
       var nxt=raw[ri+1]||[];
       if(nxt.some(function(c){return/^\d{8,}$/.test(String(c).trim());})){headerRow=ri;break;}
     }
   }
-  if(headerRow<0){toast('\u274c Không tìm thấy dòng tiêu đề','err');return;}
+  if(headerRow<0){toast('❌ Không tìm thấy tiêu đề','err');return;}
 
-  // ═══ GỘP TẤT CẢ HEADER ROWS ═══
-  // Với merged cells, giá trị chỉ ở ô đầu tiên. Thu thập tất cả text từ mọi header row cho mỗi cột
   var maxCols=0;
-  for(var ri=0;ri<=headerRow;ri++) maxCols=Math.max(maxCols,(raw[ri]||[]).length);
-  // Cũng kiểm tra row ngay sau headerRow (có thể có sub-header)
+  for(var ri=0;ri<=headerRow+1;ri++) maxCols=Math.max(maxCols,(raw[ri]||[]).length);
+  dataStart=headerRow+1;
   var extraRow=raw[headerRow+1]||[];
-  var firstDataRow=headerRow+1;
-  // Nếu row sau header không có mã HS (không phải data) → nó là sub-header
-  if(extraRow.length>0 && !extraRow.some(function(c){return/^\d{8,}$/.test(String(c||'').trim());})){
-    firstDataRow=headerRow+2;
-    maxCols=Math.max(maxCols,extraRow.length);
-  }
+  if(extraRow.length>0&&!extraRow.some(function(c){return/^\d{8,}$/.test(String(c||'').trim());})){dataStart=headerRow+2;}
 
-  // Build composite header cho mỗi cột: gộp text từ tất cả header rows
   var composites=[];
   for(var ci=0;ci<maxCols;ci++){
     var parts=[];
-    for(var ri=0;ri<=headerRow;ri++){
+    for(var ri=0;ri<=Math.min(headerRow+1,dataStart-1);ri++){
       var v=_a((raw[ri]||[])[ci]);
-      if(v && v.length>0) parts.push(v);
+      if(v&&v.length>0) parts.push(v);
     }
-    // Thêm sub-header row nếu có
-    if(firstDataRow>headerRow+1){
-      var sv=_a(extraRow[ci]);
-      if(sv && sv.length>0) parts.push(sv);
-    }
-    composites.push(parts.join(' | '));
+    composites.push(parts.join(' '));
   }
-  console.log('Parse columns:',composites);
 
-  // ═══ TÌM CỘT CỐ ĐỊNH ═══
-  var iStt=-1,iLop=-1,iMa=-1,iTen=-1,iNs=-1;
-  composites.forEach(function(c,i){
-    if(c.indexOf('stt')>=0 && iStt<0) iStt=i;
-    if((c.indexOf('ma lop')>=0||c.indexOf('lop')>=0) && c.indexOf('hoc sinh')<0 && iLop<0) iLop=i;
-    if((c.indexOf('ma hoc sinh')>=0||c.indexOf('ma hs')>=0||(c.indexOf('ma')>=0&&c.indexOf('hoc')>=0)) && iMa<0) iMa=i;
-    if((c.indexOf('ho ten')>=0||c.indexOf('ho va ten')>=0||c.indexOf('ten')>=0) && c.indexOf('ma')<0 && iTen<0) iTen=i;
-    if((c.indexOf('ngay sinh')>=0||(c.indexOf('ngay')>=0&&c.indexOf('sinh')>=0)) && iNs<0) iNs=i;
-  });
-  // Fallback mã HS: tìm cột có giá trị >8 chữ số
-  if(iMa<0){
-    for(var di=firstDataRow;di<Math.min(raw.length,firstDataRow+5);di++){
-      for(var fi=0;fi<(raw[di]||[]).length;fi++){
-        if(/^\d{8,}$/.test(String((raw[di]||[])[fi]||'').trim())){iMa=fi;break;}
-      }
-      if(iMa>=0)break;
-    }
-  }
-  if(iMa<0){toast('\u274c Không tìm thấy cột Mã HS','err');return;}
+  var iMa=-1;
+  composites.forEach(function(c,i){if((c.indexOf('ma hoc sinh')>=0||(c.indexOf('ma')>=0&&c.indexOf('hoc')>=0))&&iMa<0) iMa=i;});
+  if(iMa<0){for(var di=dataStart;di<Math.min(raw.length,dataStart+3);di++){for(var fi=0;fi<(raw[di]||[]).length;fi++){if(/^\d{8,}$/.test(String((raw[di]||[])[fi]||'').trim())){iMa=fi;break;}}if(iMa>=0)break;}}
+  if(iMa<0){toast('❌ Không tìm thấy cột Mã HS','err');return;}
 
-  // ═══ MAP CỘT DỮ LIỆU ═══
+  var P=[
+    {p:['toan'],k:'mon_Toán',t:'mon'},{p:['tieng viet'],k:'mon_Tiếng_việt',t:'mon'},
+    {p:['dao duc'],k:'mon_Đạo_đức',t:'mon'},{p:['tu nhien','xa hoi'],k:'mon_Tự_nhiên_và_xã_hội',t:'mon'},
+    {p:['ngoai ngu','tieng anh'],k:'mon_Ngoại_ngữ',t:'mon'},{p:['tieng dan toc'],k:'mon_Tiếng_dân_tộc',t:'mon'},
+    {p:['tin hoc','th-cn'],k:'mon_TH-CN_Tin_học',t:'mon'},
+    {p:['am nhac'],k:'mon_Nghệ_thuật_Âm_nhạc',t:'mon'},{p:['mi thuat','my thuat'],k:'mon_Nghệ_thuật_Mĩ_thuật',t:'mon'},
+    {p:['trai nghiem','hdtn'],k:'mon_Hoạt_động_trải_nghiệm',t:'mon'},
+    {p:['the chat','gdtc'],k:'mon_Giáo_dục_thể_chất',t:'mon'},
+    {p:['tu chu'],k:'nl_Tự_chủ_và_tự_học',t:'nlpc'},{p:['giao tiep'],k:'nl_Giao_tiếp_và_hợp_tác',t:'nlpc'},
+    {p:['giai quyet','sang tao'],k:'nl_Giải_quyết_vấn_đề_và_sáng_tạo',t:'nlpc'},
+    {p:['ngon ngu'],k:'nl_Ngôn_ngữ',t:'nlpc'},{p:['tinh toan'],k:'nl_Tính_toán',t:'nlpc'},
+    {p:['khoa hoc'],k:'nl_Khoa_học',t:'nlpc'},{p:['tham mi','tham my'],k:'nl_Thẩm_mĩ',t:'nlpc'},
+    {p:['yeu nuoc'],k:'pc_Yêu_nước',t:'nlpc'},{p:['nhan ai'],k:'pc_Nhân_ái',t:'nlpc'},
+    {p:['cham chi'],k:'pc_Chăm_chỉ',t:'nlpc'},{p:['trung thuc'],k:'pc_Trung_thực',t:'nlpc'},
+    {p:['trach nhiem'],k:'pc_Trách_nhiệm',t:'nlpc'},{p:['len lop'],k:'len_lop',t:'ll'}
+  ];
   var colMap={};
-  var fixedCols=[iStt,iLop,iMa,iTen,iNs];
-
-  // Từ điển match: key pattern → grade key
-  var MON_PATTERNS=[
-    {p:['toan'],key:'mon_Toán'},
-    {p:['tieng viet'],key:'mon_Tiếng_việt'},
-    {p:['dao duc'],key:'mon_Đạo_đức'},
-    {p:['tu nhien','tnxh','xa hoi'],key:'mon_Tự_nhiên_và_xã_hội'},
-    {p:['ngoai ngu','tieng anh'],key:'mon_Ngoại_ngữ'},
-    {p:['tieng dan toc'],key:'mon_Tiếng_dân_tộc'},
-    {p:['tin hoc','th-cn','cong nghe'],key:'mon_TH-CN_Tin_học'},
-    {p:['am nhac','nghe thuat | am'],key:'mon_Nghệ_thuật_Âm_nhạc'},
-    {p:['mi thuat','my thuat','nghe thuat | mi','nghe thuat | my'],key:'mon_Nghệ_thuật_Mĩ_thuật'},
-    {p:['hoat dong trai nghiem','hdtn','trai nghiem'],key:'mon_Hoạt_động_trải_nghiệm'},
-    {p:['the chat','giao duc the chat','gdtc'],key:'mon_Giáo_dục_thể_chất'},
-    {p:['khoa hoc'],key:'mon_Khoa_học'},
-    {p:['lich su','dia li'],key:'mon_Lịch_sử_và_Địa_lí'}
-  ];
-  var NL_PATTERNS=[
-    {p:['tu chu','tu hoc'],key:'nl_Tự_chủ_và_tự_học'},
-    {p:['giao tiep','hop tac'],key:'nl_Giao_tiếp_và_hợp_tác'},
-    {p:['giai quyet','van de','sang tao'],key:'nl_Giải_quyết_vấn_đề_và_sáng_tạo'},
-    {p:['ngon ngu'],key:'nl_Ngôn_ngữ'},
-    {p:['tinh toan'],key:'nl_Tính_toán'},
-    {p:['khoa hoc'],key:'nl_Khoa_học'},
-    {p:['tham mi','tham my'],key:'nl_Thẩm_mĩ'},
-    {p:['the chat'],key:'nl_Thể_chất'}
-  ];
-  var PC_PATTERNS=[
-    {p:['yeu nuoc'],key:'pc_Yêu_nước'},
-    {p:['nhan ai'],key:'pc_Nhân_ái'},
-    {p:['cham chi'],key:'pc_Chăm_chỉ'},
-    {p:['trung thuc'],key:'pc_Trung_thực'},
-    {p:['trach nhiem'],key:'pc_Trách_nhiệm'}
-  ];
-
-  function matchPattern(composite,patterns){
-    for(var pi=0;pi<patterns.length;pi++){
-      var pat=patterns[pi];
-      if(colMap[pat.key]) continue; // đã match rồi
-      var matched=pat.p.some(function(pp){return composite.indexOf(pp)>=0;});
-      if(matched) return pat.key;
-    }
-    return null;
-  }
-
-  // Xác định vùng: tìm boundary giữa môn học / năng lực / phẩm chất
-  var inNLZone=false, inPCZone=false;
-  for(var ci=0;ci<composites.length;ci++){
-    if(fixedCols.indexOf(ci)>=0) continue;
-    var comp=composites[ci];
-    if(!comp) continue;
-
-    // Detect zone transitions
-    if(comp.indexOf('nang luc')>=0 && comp.indexOf('pham chat')<0) inNLZone=true;
-    if(comp.indexOf('pham chat')>=0) {inNLZone=false; inPCZone=true;}
-
-    var key=null;
-    if(inPCZone){
-      key=matchPattern(comp,PC_PATTERNS);
-      if(key) colMap[key]={ci:ci,key:key,type:'nlpc'};
-    } else if(inNLZone){
-      key=matchPattern(comp,NL_PATTERNS);
-      if(key) colMap[key]={ci:ci,key:key,type:'nlpc'};
-    } else {
-      // Thử môn học trước
-      key=matchPattern(comp,MON_PATTERNS);
-      if(key) colMap[key]={ci:ci,key:key,type:'mon'};
-      // Nếu không match môn → thử NL (trường hợp không có zone header)
-      if(!key){
-        key=matchPattern(comp,NL_PATTERNS);
-        if(key) colMap[key]={ci:ci,key:key,type:'nlpc'};
+  composites.forEach(function(comp,ci){
+    if(ci===iMa)return;
+    P.forEach(function(pat){
+      if(colMap[pat.k])return;
+      if(pat.p.some(function(pp){return comp.indexOf(pp)>=0;})){
+        colMap[pat.k]={ci:ci,key:pat.k,type:pat.t};
       }
-      if(!key){
-        key=matchPattern(comp,PC_PATTERNS);
-        if(key) colMap[key]={ci:ci,key:key,type:'nlpc'};
-      }
-    }
+    });
+  });
+  console.log('FUZZY: '+Object.keys(colMap).length+' cols, iMa='+iMa);
+  return _applyParsedData(raw,dataStart,iMa,colMap,lop,k);
+}
 
-    // Lên lớp (chỉ kỳ CN)
-    if(comp.indexOf('len lop')>=0) colMap['len_lop']={ci:ci,key:'len_lop',type:'ll'};
-  }
-
-  console.log('Mapped '+Object.keys(colMap).length+' columns:', Object.keys(colMap));
-
-  // ═══ ĐỌC DATA ═══
-  var dataRows=raw.slice(firstDataRow);
+function _applyParsedData(raw,dataStart,iMa,colMap,lop,k){
+  var dataRows=raw.slice(dataStart);
   var updated=0,skipped=0,errors=[];
-
   dataRows.forEach(function(row,ri){
     var ma=String(row[iMa]||'').trim();
-    if(!ma||!/^\d{4,}$/.test(ma)) return;
-
+    if(!ma||!/^\d{4,}$/.test(ma))return;
     var hs=mySB().find(function(s){return String(s.ma)===ma;});
     if(!hs){skipped++;return;}
     if(hs.lop!==lop){skipped++;return;}
-
     var g=Object.assign({},grades[ma]||{});
     var hasData=false;
-
     Object.keys(colMap).forEach(function(ck){
       var col=colMap[ck];
       var val=String(row[col.ci]||'').trim();
-      if(!val) return;
-
+      if(!val)return;
       if(col.type==='mon'){
-        var upper=val.toUpperCase();
-        var mapped={T:'HTT',H:'HT',C:'CHT',HTT:'HTT',HT:'HT',CHT:'CHT'}[upper];
-        if(mapped){g[col.key]=mapped;hasData=true;}
-        else errors.push('Dòng '+(ri+1)+': "'+val+'" ≠ T/H/C ('+col.key+')');
+        var m={T:'HTT',H:'HT',C:'CHT',HTT:'HTT',HT:'HT',CHT:'CHT'}[val.toUpperCase()];
+        if(m){g[col.key]=m;hasData=true;}
       }else if(col.type==='nlpc'){
-        var v=val.toUpperCase();
-        var mappedNL={'T':'T','Đ':'Đ','D':'Đ','C':'CCG','CCG':'CCG','\u0110':'Đ'}[v]||{'T':'T','Đ':'Đ','C':'CCG'}[val];
-        if(mappedNL){g[col.key]=mappedNL;hasData=true;}
-        else errors.push('Dòng '+(ri+1)+': "'+val+'" ≠ T/Đ/C ('+col.key+')');
+        var m2={'T':'T','Đ':'Đ','D':'Đ','C':'CCG','CCG':'CCG'}[val.toUpperCase()]||{'T':'T','Đ':'Đ','C':'CCG'}[val];
+        if(m2){g[col.key]=m2;hasData=true;}
       }else if(col.type==='ll'){
         if(val.toLowerCase()==='x'||val==='Có'){g[col.key]='Có';hasData=true;}
-        else if(val==='Không'||val==='-'){g[col.key]='Không';hasData=true;}
       }
     });
-
     if(hasData){
-      if(curPeriod==='cn'){
-        var kq=cTT(ma,hs.khoi);
-        if(kq){g.hoan_thanh=kq==='CHT'?'CHT':'HT';g.kqgd=kq;}
-      }
+      if(curPeriod==='cn'){var kq=cTT(ma,hs.khoi);if(kq){g.hoan_thanh=kq==='CHT'?'CHT':'HT';g.kqgd=kq;}}
       g.updated_at=new Date().toLocaleString('vi-VN');
       g.updated_by=CU?CU.username:'excel';
-      grades[ma]=g;
-      _markDirty(ma);
-      updated++;
+      grades[ma]=g;_markDirty(ma);updated++;
     }
   });
-
-  _saveGradesToStorage();
-  merge();updateAll();
-
-  var msg='✅ Nhập xong: '+updated+' HS cập nhật';
+  _saveGradesToStorage();merge();updateAll();
+  var msg='✅ Nhập: '+updated+' HS';
   if(skipped)msg+=', '+skipped+' bỏ qua';
-  if(errors.length)msg+=', '+errors.length+' lỗi';
-  toast(msg,errors.length?'warn':'ok');
-
-  T('d-import-info').innerHTML='<span style="color:var(--g)">'+updated+' HS đã nhập</span>'
-    +(skipped?' · <span style="color:var(--o)">'+skipped+' bỏ qua</span>':'')
-    +(errors.length?' · <span style="color:var(--r)">'+errors.length+' lỗi</span>':'');
-
-  if(updated>0&&GAS){
-    T('d-import-info').innerHTML+=' — <span style="color:var(--o)">Đang lưu lên Sheets...</span>';
-    setTimeout(function(){saveAllLop();},500);
-  }
-
-  if(errors.length>0&&errors.length<=20){
-    console.warn('Lỗi nhập Excel:');
-    errors.forEach(function(e){console.warn('  '+e);});
-  }
+  toast(msg,'ok');
+  T('d-import-info').innerHTML='<span style="color:var(--g)">'+updated+' HS đã nhập</span>'+(skipped?' · <span style="color:var(--o)">'+skipped+' bỏ qua</span>':'');
+  if(updated>0&&GAS){T('d-import-info').innerHTML+=' — <span style="color:var(--o)">Đang lưu...</span>';setTimeout(function(){saveAllLop();},500);}
 }
 
 // ┌──────────────────────────────────────────────────────────┐
@@ -2765,7 +2693,7 @@ function saveAllLop(){
   }
   if(!batch.length){toast('ℹ️ Không có điểm để lưu','warn');return;}
   if(batch.length>50&&!confirm('Lưu '+batch.length+' HS lên Sheets?'))return;
-  var CHUNK=10,i=0,ok=0,fail=0;loader('Đang lưu '+batch.length+' HS...');
+  var CHUNK=30,i=0,ok=0,fail=0;loader('Đang lưu '+batch.length+' HS...');
   function next(){
     if(i>=batch.length){loader();toast(fail?'⚠️ '+ok+'/'+(ok+fail)+' HS':'☁️ Lưu '+ok+' HS!',fail?'warn':'ok');return;}
     T('ldr-t').textContent='Lưu '+Math.min(i+CHUNK,batch.length)+'/'+batch.length+'...';
