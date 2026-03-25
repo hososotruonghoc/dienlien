@@ -538,6 +538,15 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       <button class="period-btn" data-pid="gk2" onclick="switchPeriod('gk2')">Giữa<br>HK2</button>
       <button class="period-btn on" data-pid="cn" onclick="switchPeriod('cn')">Cuối<br>năm</button>
     </div>
+    <div id="admin-lock-panel" style="display:none;margin-top:8px;padding:6px 8px;background:rgba(255,255,255,.08);border-radius:8px">
+      <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:5px;text-align:center">🔐 Admin: Khóa/Mở kỳ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <button onclick="_toggleLock('gk1')" class="lk-btn" id="lk-gk1" style="font-size:9px;padding:4px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);cursor:pointer">GHK1</button>
+        <button onclick="_toggleLock('ck1')" class="lk-btn" id="lk-ck1" style="font-size:9px;padding:4px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);cursor:pointer">CHK1</button>
+        <button onclick="_toggleLock('gk2')" class="lk-btn" id="lk-gk2" style="font-size:9px;padding:4px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);cursor:pointer">GHK2</button>
+        <button onclick="_toggleLock('cn')" class="lk-btn" id="lk-cn" style="font-size:9px;padding:4px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);cursor:pointer">CN</button>
+      </div>
+    </div>
   </div>
 
   <div class="sb-nav">
@@ -1104,6 +1113,7 @@ var PERIODS=[
 ];
 var curPeriod='cn'; // Default = cuối năm (backward compatible)
 var allGrades={}; // {period: {ma: gradeObj}}
+var lockedPeriods={}; // {gk1:true, ck1:true, ...} — Admin khóa kỳ
 
 var NL_CHUNG_IDX=3; // 3 NL đầu là NL chung, còn lại là NL đặc thù
 
@@ -1213,6 +1223,7 @@ function _scheduleAutoSave(){
 async function _flushAutoSave(){
   _autoSaveTimer=null;
   if(!GAS||_autoSaving||!navigator.onLine) return;
+  if(lockedPeriods[curPeriod]&&CU&&CU.role!=='admin') return;
   var keys=Object.keys(_dirtyGrades);
   if(!keys.length) return;
 
@@ -1347,21 +1358,72 @@ function needAdmin(msg){
 // PERIOD SWITCHER
 function switchPeriod(pid){
   if(pid===curPeriod)return;
-  // Save current period grades (deep copy to prevent reference leaks)
+  // GV bị chặn nếu kỳ bị khóa
+  if(lockedPeriods[pid]&&(!CU||CU.role!=='admin')){
+    toast('🔒 Kỳ này đã bị khóa','warn');return;
+  }
   allGrades[curPeriod]=JSON.parse(JSON.stringify(grades));
-  // Switch
   curPeriod=pid;
-  // Load: deep copy from saved, or empty
   var saved=allGrades[curPeriod];
   grades=saved?JSON.parse(JSON.stringify(saved)):{};
   allGrades[curPeriod]=grades;
-  // Update UI
-  document.querySelectorAll('.period-btn').forEach(function(b){b.classList.toggle('on',b.dataset.pid===pid);});
+  _updatePeriodBtns();
   T('cur-period-label').textContent=PERIODS.find(function(p){return p.id===pid;}).name;
   merge();updateAll();
   if(GAS)syncNow(true);
-  checkPeriodReady(pid);
   toast('📅 Chuyển sang: '+PERIODS.find(function(p){return p.id===pid;}).name,'ok');
+}
+function _updatePeriodBtns(){
+  var isAdmin=CU&&CU.role==='admin';
+  document.querySelectorAll('.period-btn').forEach(function(b){
+    var pid=b.dataset.pid;
+    var locked=!!lockedPeriods[pid];
+    b.classList.toggle('on',pid===curPeriod);
+    var ico=b.querySelector('.lock-ico');
+    if(locked){
+      if(!ico){ico=document.createElement('span');ico.className='lock-ico';ico.style.cssText='position:absolute;top:1px;right:2px;font-size:7px';b.style.position='relative';b.appendChild(ico);}
+      ico.textContent='🔒';
+    }else{if(ico)ico.remove();}
+    if(locked&&!isAdmin){b.style.opacity='0.35';b.style.pointerEvents='none';}
+    else{b.style.opacity='';b.style.pointerEvents='';}
+  });
+  // Admin lock panel
+  var lp=T('admin-lock-panel');
+  if(lp) lp.style.display=isAdmin?'block':'none';
+  // Style admin lock buttons
+  ['gk1','ck1','gk2','cn'].forEach(function(pid){
+    var btn=T('lk-'+pid);if(!btn)return;
+    var locked=!!lockedPeriods[pid];
+    btn.textContent=(locked?'🔒 ':'🔓 ')+{gk1:'GHK1',ck1:'CHK1',gk2:'GHK2',cn:'CN'}[pid];
+    btn.style.background=locked?'rgba(239,68,68,.3)':'rgba(34,197,94,.2)';
+    btn.style.borderColor=locked?'rgba(239,68,68,.5)':'rgba(34,197,94,.4)';
+    btn.style.color=locked?'#fca5a5':'#86efac';
+  });
+}
+function _toggleLock(pid){
+  if(!CU||CU.role!=='admin')return;
+  if(lockedPeriods[pid]){delete lockedPeriods[pid];}
+  else{lockedPeriods[pid]=true;}
+  _updatePeriodBtns();
+  _saveLockConfig();
+  var name=PERIODS.find(function(p){return p.id===pid;}).name;
+  toast(lockedPeriods[pid]?'🔒 Đã khóa: '+name:'🔓 Đã mở: '+name,'ok');
+}
+
+// ═══ KHÓA KỲ — LƯU/TẢI CẤU HÌNH ═══
+async function _saveLockConfig(){
+  try{localStorage.setItem('_lockedPeriods',JSON.stringify(lockedPeriods));}catch(e){}
+  if(GAS){gasPost({action:'saveConfig',key:'lockedPeriods',value:JSON.stringify(lockedPeriods)}).catch(function(){});}
+}
+async function _loadLockConfig(){
+  try{var lp=localStorage.getItem('_lockedPeriods');if(lp)lockedPeriods=JSON.parse(lp);}catch(e){}
+  if(GAS){
+    try{
+      var r=await gasCall({action:'getConfig',key:'lockedPeriods'});
+      if(r.ok&&r.value){lockedPeriods=JSON.parse(r.value);try{localStorage.setItem('_lockedPeriods',r.value);}catch(e){}}
+    }catch(e){}
+  }
+  _updatePeriodBtns();
 }
 
 // SYNC — V3.0 async/await
@@ -2635,6 +2697,7 @@ document.addEventListener('mousedown',function(e){
 
 // SAVE
 function saveCld(){
+  if(lockedPeriods[curPeriod]&&CU&&CU.role!=='admin'){toast('🔒 Kỳ đang bị khóa, không thể lưu','warn');return;}
   if(eIdx===null)return;if(document.querySelectorAll('.diemw input.inv').length){toast('❌ Điểm không hợp lệ','err');return;}
   var s=SB[eIdx],g=colG();g.updated_at=new Date().toLocaleString('vi-VN');g.updated_by=CU?CU.username:'?';
   grades[s.ma]=g;_saveGradesToStorage();
@@ -2652,6 +2715,7 @@ function saveCld(){
   }doSave(0);
 }
 function saveAllLop(){
+  if(lockedPeriods[curPeriod]&&CU&&CU.role!=='admin'){toast('🔒 Kỳ đang bị khóa, không thể lưu','warn');return;}
   if(!GAS){toast('⚠️ Chưa có GAS','warn');return;}
   var lop=T('d-lop').value;
   var batch;
@@ -3123,6 +3187,8 @@ var _newLoginOK=function(){
   if(T('sb-urole'))T('sb-urole').textContent=CU.role==='admin'?'Quản trị viên':'Giáo viên';
   if(T('sb-avatar'))T('sb-avatar').textContent=(CU.hoten||CU.username).charAt(0).toUpperCase();
   if(T('sb-tot'))T('sb-tot').textContent=mySB().length;
+  // Tải cấu hình khóa kỳ
+  _loadLockConfig();
 };
 loginOK=_newLoginOK;
 
