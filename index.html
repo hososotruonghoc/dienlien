@@ -1582,30 +1582,109 @@ function _storeToDisplay(val,type){
   return val;
 }
 
-// ═══ TẠO MẪU CHUẨN BỘ GD TRÊN GOOGLE SHEETS ═══
-async function createMauChuan(){
+// ═══ TẠO MẪU CHUẨN BỘ GD — TẢI TRỰC TIẾP VỀ MÁY ═══
+function createMauChuan(){
   var lop=T('d-lop').value;
   if(!lop){toast('⚠️ Chọn lớp trước','warn');return;}
-  if(!GAS){toast('⚠️ Chưa kết nối','warn');return;}
+  var k=parseInt(lop);
   var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
   var periodCode={gk1:'GK1',ck1:'CK1',gk2:'GK2',cn:'CN'}[curPeriod]||'GK2';
-  if(!confirm('Tạo mẫu chuẩn "'+periodName+'" cho lớp '+lop+' trên Google Sheets?\n\nSau khi tạo, mở Google Sheets để tải về .xlsx'))return;
-  loader('Đang tạo mẫu chuẩn...');
-  try{
-    var r=await gasPost({action:'createTemplate',period:periodCode,lop:lop});
-    loader();
-    if(r.ok){
-      toast('✅ '+r.message,'ok');
-      T('d-import-info').innerHTML='<span style="color:var(--g)">✅ Đã tạo sheet "'+r.sheetName+'"</span> — '
-        +'<a href="'+r.url+'" target="_blank" style="color:var(--p);font-weight:600">📂 Mở Google Sheets</a>'
-        +' → Tải về .xlsx';
-    }else{
-      toast('❌ '+r.error,'err');
+  var isCN=(curPeriod==='cn');
+
+  // Lấy HS theo lớp
+  var hsLop=mySB().filter(function(s){return s.lop===lop;});
+  if(!hsLop.length){toast('⚠️ Không có HS lớp '+lop,'warn');return;}
+
+  // ═══ CẤU TRÚC CỘT ═══
+  var infoCols=['STT','Mã lớp','Mã học sinh','Họ tên','Ngày sinh'];
+  var monCols=['Toán','Tiếng<br>việt','Đạo đức','Tự nhiên<br>và xã<br>hội','Ngoại<br>ngữ','Tiếng<br>dân tộc','TH-CN<br>(Tin<br>học)','Nghệ<br>thuật<br>(Âm<br>nhạc)','Nghệ<br>thuật<br>(Mĩ<br>thuật)','Hoạt<br>động<br>trải<br>nghiệm','Giáo<br>dục thể<br>chất'];
+  var nlcCols=['Tự chủ<br>và tự học','Giao tiếp<br>và hợp tác','Giải quyết<br>vấn đề<br>và sáng<br>tạo'];
+  var nldCols=['Ngôn<br>ngữ','Tính<br>toán','Khoa<br>học','Thẩm<br>mĩ','Thể<br>chất'];
+  var pcCols=['Yêu<br>nước','Nhân<br>ái','Chăm<br>chỉ','Trung<br>thực','Trách<br>nhiệm'];
+  var tailCols=isCN?['Hoàn thành<br>CT lớp học','Lên<br>lớp','Khen<br>thưởng']:[];
+
+  // ═══ STYLES ═══
+  var bdr='border:1px solid #000;';
+  var ctr='text-align:center;vertical-align:middle;';
+  var bold='font-weight:bold;';
+  var wrap='mso-text-control:shrinktofit;word-wrap:break-word;';
+  var sGreen='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
+  var sGreenDk='background:#92d050;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
+  var sBlue='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sOrangeDk='background:#f4b084;'+bdr+ctr+bold+'font-size:9pt;';
+  var sOrange='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sPurpleDk='background:#9bc2e6;'+bdr+ctr+bold+'font-size:9pt;';
+  var sPurple='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sYellow='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sData=bdr+ctr+'font-size:10pt;';
+  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
+
+  // ═══ BUILD HTML TABLE ═══
+  var h='';
+
+  // ROW 1: Group headers
+  h+='<tr height="30">';
+  for(var i=0;i<5;i++) h+='<td rowspan="3" style="'+sGreen+'">'+infoCols[i]+'</td>';
+  h+='<td colspan="'+monCols.length+'" style="'+sGreenDk+'">Môn học và hoạt động giáo dục</td>';
+  h+='<td colspan="'+(nlcCols.length+nldCols.length)+'" style="'+sOrangeDk+'">Năng lực cốt lõi</td>';
+  h+='<td colspan="'+pcCols.length+'" style="'+sPurpleDk+'">Phẩm chất chủ yếu</td>';
+  tailCols.forEach(function(t){h+='<td rowspan="3" style="'+sYellow+'">'+t+'</td>';});
+  h+='</tr>';
+
+  // ROW 2: Sub-group headers
+  h+='<tr height="25">';
+  monCols.forEach(function(m){h+='<td rowspan="2" style="'+sBlue+'">'+m+'</td>';});
+  h+='<td colspan="'+nlcCols.length+'" style="'+sOrange+'">Năng lực chung</td>';
+  h+='<td colspan="'+nldCols.length+'" style="'+sOrange+'">Năng lực đặc thù</td>';
+  pcCols.forEach(function(p){h+='<td rowspan="2" style="'+sPurple+'">'+p+'</td>';});
+  h+='</tr>';
+
+  // ROW 3: NL detail headers
+  h+='<tr height="45">';
+  nlcCols.forEach(function(n){h+='<td style="'+sOrange+'">'+n+'</td>';});
+  nldCols.forEach(function(n){h+='<td style="'+sOrange+'">'+n+'</td>';});
+  h+='</tr>';
+
+  // DATA ROWS
+  hsLop.forEach(function(s,i){
+    var ns=String(s.ns||'');
+    // Fix raw date format
+    if(ns.indexOf('GMT')>=0||ns.indexOf('T')>=0){
+      try{var d=new Date(ns);ns=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}catch(e){}
     }
-  }catch(e){
-    loader();
-    toast('❌ '+e.message,'err');
-  }
+    h+='<tr height="28">';
+    h+='<td style="'+sData+'">'+(i+1)+'</td>';
+    h+='<td style="'+sData+'">'+s.lop+'</td>';
+    h+='<td style="'+sData+'">'+s.ma+'</td>';
+    h+='<td style="'+sName+'">'+s.ten+'</td>';
+    h+='<td style="'+sData+'">'+ns+'</td>';
+    var emptyCols=monCols.length+nlcCols.length+nldCols.length+pcCols.length+tailCols.length;
+    for(var j=0;j<emptyCols;j++) h+='<td style="'+sData+'"></td>';
+    h+='</tr>';
+  });
+
+  // ═══ XUẤT FILE ═══
+  var colW='<col width="40"><col width="55"><col width="100"><col width="180"><col width="95">';
+  for(var i=0;i<monCols.length;i++) colW+='<col width="55">';
+  for(var i=0;i<nlcCols.length+nldCols.length;i++) colW+='<col width="65">';
+  for(var i=0;i<pcCols.length;i++) colW+='<col width="65">';
+  for(var i=0;i<tailCols.length;i++) colW+='<col width="70">';
+
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
+    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
+    +'<x:Name>'+periodCode+'_Lop'+lop+'</x:Name>'
+    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>3</x:SplitHorizontal><x:TopRowBottomPane>3</x:TopRowBottomPane>'
+    +'<x:SplitVertical>5</x:SplitVertical><x:LeftColumnRightPane>5</x:LeftColumnRightPane></x:WorksheetOptions>'
+    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
+    +'<body><table>'+colW+h+'</table></body></html>';
+
+  var blob=new Blob([html],{type:'application/vnd.ms-excel'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Mau_'+periodCode+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('📥 Đã tải mẫu '+periodName+' — Lớp '+lop+' ('+hsLop.length+' HS)','ok');
 }
 
 function dlMauExcel(){
