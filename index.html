@@ -1433,7 +1433,9 @@ function mkPagi(pbId,piId,cur,arr,fn){
 
 // TT27
 function cTT(ma,k){
-  var g=grades[ma]||{},sj=SUBJ[String(k)]||SUBJ['1'];
+  var g=grades[ma]||{};
+  // Loại Tiếng dân tộc khỏi căn cứ đánh giá (trường không dạy)
+  var sj=(SUBJ[String(k)]||SUBJ['1']).filter(function(x){return x[1]!=='mon_Tiếng_dân_tộc';});
   var allNL=_getAllNL(parseInt(k));
   if(sj.filter(function(x){return g[x[1]];}).length<sj.length)return null;
   if(allNL.filter(function(x){return g[x[1]];}).length<allNL.length)return null;
@@ -2508,7 +2510,10 @@ function openM(idx){
   sj.forEach(function(mn){
     var name=mn[0],mk=mn[1],dk=mn[2],hD=mn[3],mv=g[mk]||'',dv=dk?(g[dk]!==undefined?g[dk]:''):'';
     var ce=(es===null)||es.indexOf(mk)>=0;
-    h+='<div class="frow'+(ce?'':' rdonly')+'"><div class="flbl">'+name+'</div>';
+    var isTDT=(mk==='mon_Tiếng_dân_tộc');
+    var dimStyle=isTDT?' style="opacity:0.35;pointer-events:none"':'';
+    var dimNote=isTDT?'<span style="font-size:9px;color:var(--slate4);margin-left:4px">(Không đánh giá)</span>':'';
+    h+='<div class="frow'+(ce?'':' rdonly')+'"'+dimStyle+'><div class="flbl">'+name+dimNote+'</div>';
     h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><div class="rg" onchange="onGC('+idx+')">';
     h+='<label class="o-htt"><input type="radio" name="m_'+mk+'" value="HTT"'+(mv==='HTT'?' checked':'')+(ce?'':' disabled')+'><span>HTT</span></label>';
     h+='<label class="o-ht"><input type="radio" name="m_'+mk+'" value="HT"'+(mv==='HT'?' checked':'')+(ce?'':' disabled')+'><span>HT</span></label>';
