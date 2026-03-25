@@ -2922,12 +2922,14 @@ gp=function(id,el){
 var _origLoginOK=loginOK;
 var _newLoginOK=function(){
   _origLoginOK();
-  // Update sidebar user
+  // Update sidebar user info
   if(T('sb-uname'))T('sb-uname').textContent=CU.hoten||CU.username;
-  if(T('sb-urole'))T('sb-urole').textContent=CU.role==='admin'?'Quản trị viên':'Giáo viên';
+  var roleText=CU.role==='admin'?'Quản trị viên':(CU.lop?'GVCN lớp '+CU.lop:'Giáo viên');
+  if(T('sb-urole'))T('sb-urole').textContent=roleText;
   if(T('sb-avatar'))T('sb-avatar').textContent=(CU.hoten||CU.username).charAt(0).toUpperCase();
   if(T('sb-tot'))T('sb-tot').textContent=mySB().length;
 };
+loginOK=_newLoginOK;
 
 // ═══ QUẢN LÝ HỌC SINH: THÊM / XÓA ═══
 function openAddHS(){
