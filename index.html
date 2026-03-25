@@ -963,7 +963,8 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
 // │  CẤU HÌNH — V2.0                                        │
 // └──────────────────────────────────────────────────────────┘
 var APP_VERSION='3.0';
-var DEFAULT_GAS = 'https://script.google.com/macros/s/AKfycbwY01v2kKGvXIzBd0CSSeTvA428sb9-D3-o_1NdBNsl9YZQhSAjTfxSQ1yawFF-9O3m/exec';
+// ★★★ THAY URL MỚI TẠI ĐÂY — Dán URL Web App mới sau khi deploy ★★★
+var DEFAULT_GAS = 'https://script.google.com/macros/s/AKfycbzb_GupB0Ad2t53XlraW8_84_DRGzoDG-rth3_CtCfFekTZirX2Ev0fkksm2g14NW1S/exec';
 
 var SB   = JSON.parse(document.getElementById('_d_sb').textContent);
 
@@ -1049,33 +1050,61 @@ function kqL(kq){return{HTXS:'<span class="bl bl-htxs">⭐ HT Xuất sắc</span
 function khenL(g,kq){if(kq==='HTXS')return'<span class="bl bl-xs">⭐ Xuất sắc</span>';if(kq==='HTT'&&g._tieubieu==='1')return'<span class="bl bl-tb">🌟 Tiêu biểu</span>';return'<span style="color:#ccc">—</span>';}
 function kqText(kq){return{HTXS:'Hoàn thành Xuất sắc',HTT:'Hoàn thành Tốt',HT:'Hoàn thành',CHT:'Chưa hoàn thành'}[kq]||'';}
 
-// GAS API
-function gasCall(p){
-  if(!GAS) return Promise.reject(new Error('GAS chưa cấu hình'));
-  return fetch(GAS+'?'+new URLSearchParams(p).toString(),{method:'GET',redirect:'follow'})
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
+// GAS API — async/await với xử lý lỗi chi tiết
+async function gasCall(p){
+  if(!GAS) throw new Error('GAS chưa cấu hình');
+  try{
+    var url=GAS+'?'+new URLSearchParams(p).toString();
+    var r=await fetch(url,{method:'GET',redirect:'follow'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.json();
+  }catch(e){
+    if(!navigator.onLine) throw new Error('Mất kết nối mạng — kiểm tra WiFi/3G');
+    if(e.message.indexOf('Failed to fetch')>=0) throw new Error('Không thể kết nối server — kiểm tra URL hoặc quyền truy cập');
+    throw e;
+  }
 }
-function gasPost(d){
-  if(!GAS) return Promise.reject(new Error('GAS chưa cấu hình'));
+async function gasPost(d){
+  if(!GAS) throw new Error('GAS chưa cấu hình');
   var body=JSON.stringify(d);
-  return fetch(GAS,{
-    method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:body, redirect:'follow'
-  }).then(function(r){
-    if(!r.ok)throw new Error('HTTP '+r.status);return r.text();
-  }).then(function(txt){
-    txt=(txt||'').trim();if(!txt)throw new Error('Empty response');
-    if(txt.indexOf('<!DOCTYPE')>=0)throw new Error('GAS trả về HTML — deploy lại');
+  try{
+    // Thử POST trước
+    var r=await fetch(GAS,{
+      method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:body, redirect:'follow'
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var txt=(await r.text()||'').trim();
+    if(!txt) throw new Error('Empty response');
+    if(txt.indexOf('<!DOCTYPE')>=0) throw new Error('GAS trả về HTML — cần deploy lại Web App');
     return JSON.parse(txt);
-  }).catch(function(postErr){
+  }catch(postErr){
+    // Fallback: chuyển POST thành GET nếu dữ liệu nhỏ
     var enc=encodeURIComponent(body);
     if(enc.length>6000) throw new Error('Dữ liệu quá lớn. Chi tiết: '+postErr.message);
-    return fetch(GAS+'?gaspost=1&d='+enc,{method:'GET',redirect:'follow'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});
-  });
+    try{
+      var r2=await fetch(GAS+'?gaspost=1&d='+enc,{method:'GET',redirect:'follow'});
+      if(!r2.ok) throw new Error('HTTP '+r2.status);
+      return await r2.json();
+    }catch(fallbackErr){
+      if(!navigator.onLine) throw new Error('Mất kết nối mạng — kiểm tra WiFi/3G');
+      throw new Error('Lỗi kết nối: '+fallbackErr.message);
+    }
+  }
 }
 
+// ═══ GIÁM SÁT KẾT NỐI MẠNG ═══
+window.addEventListener('offline',function(){
+  toast('📡 Mất kết nối mạng — dữ liệu chỉ lưu tạm','warn');
+  sUI('err','Mất kết nối');
+});
+window.addEventListener('online',function(){
+  toast('📡 Đã có kết nối — đang đồng bộ...','ok');
+  if(GAS) syncNow(false);
+});
+
 // LOGIN
-function doLogin(){
+async function doLogin(){
   var u=T('lu').value.trim().toLowerCase(),p=T('lp').value.trim(),err=T('lerr');
   err.style.display='none';
   if(!u||!p){err.textContent='Vui lòng nhập đủ';err.style.display='block';return;}
@@ -1088,16 +1117,17 @@ function doLogin(){
     else{err.textContent='Chưa cấu hình. Liên hệ admin.';err.style.display='block';}
     return;
   }
-  gasCall({action:'login',username:u,password:p}).then(function(r){
+  try{
+    var r=await gasCall({action:'login',username:u,password:p});
     btn.disabled=false;btn.textContent='🔐 Đăng nhập';
     if(r.ok){CU=r.user;loginOK();}
     else if(u==='admin'){CU={username:'admin',hoten:'Quản trị viên',role:'admin',lop:'',phan_cong:''};T('lmode').textContent='⚠️ Offline';loginOK();}
     else{err.textContent=r.error||'Sai thông tin';err.style.display='block';}
-  }).catch(function(e){
+  }catch(e){
     btn.disabled=false;btn.textContent='🔐 Đăng nhập';
     if(u==='admin'){CU={username:'admin',hoten:'Quản trị viên',role:'admin',lop:'',phan_cong:''};T('lmode').textContent='⚠️ Lỗi: '+e.message;loginOK();}
-    else{err.textContent='Không kết nối được server';err.style.display='block';}
-  });
+    else{err.textContent=e.message||'Không kết nối được server';err.style.display='block';}
+  }
 }
 T('lp').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 T('lu').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
@@ -1173,28 +1203,26 @@ function switchPeriod(pid){
   toast('📅 Chuyển sang: '+PERIODS.find(function(p){return p.id===pid;}).name,'ok');
 }
 
-// SYNC — V2.0 enhanced
-function syncNow(silent){
+// SYNC — V3.0 async/await
+async function syncNow(silent){
   if(!GAS){if(!silent)toast('⚠️ Chưa có GAS URL','warn');return;}
+  if(!navigator.onLine){sUI('err','Mất kết nối');if(!silent)toast('📡 Mất kết nối mạng','warn');return;}
   sUI('ld');
-  var syncPeriod=curPeriod; // capture period at time of request
-  Promise.all([
-    gasCall({action:'getGrades',period:syncPeriod}),
-    gasCall({action:'getNhanXet'}).catch(function(){return{ok:true,data:{}};})
-  ]).then(function(results){
-    var rG=results[0], rN=results[1];
+  var syncPeriod=curPeriod;
+  try{
+    var [rG,rN]=await Promise.all([
+      gasCall({action:'getGrades',period:syncPeriod}),
+      gasCall({action:'getNhanXet'}).catch(function(){return{ok:true,data:{}};})
+    ]);
     if(rG.ok){
       var remote=rG.data||{};
-      // CRITICAL: Only apply if still on same period (user may have switched)
       if(syncPeriod===curPeriod){
-        // REPLACE grades entirely (not merge) to prevent cross-period contamination
         var newGrades={};
         Object.keys(remote).forEach(function(k){newGrades[k]=remote[k];});
         grades=newGrades;
         allGrades[curPeriod]=newGrades;
         try{localStorage.setItem('_allGrades',JSON.stringify(allGrades));}catch(e){}
       } else {
-        // User switched period during sync — store in correct period bucket
         allGrades[syncPeriod]=remote;
         try{localStorage.setItem('_allGrades',JSON.stringify(allGrades));}catch(e){}
       }
@@ -1210,7 +1238,10 @@ function syncNow(silent){
     var cnt=Object.keys(rG.data||{}).length;
     T('slbl').textContent='Đồng bộ '+ts+' ('+cnt+' HS)';
     if(!silent)toast('✅ Tải '+cnt+' bản ghi','ok');
-  }).catch(function(e){sUI('err');if(!silent)toast('❌ '+e.message,'err');});
+  }catch(e){
+    sUI('err');
+    if(!silent)toast('❌ '+e.message,'err');
+  }
 }
 
 // INIT
