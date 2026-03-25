@@ -1271,7 +1271,7 @@ function initApp(){
   else sUI('','Chưa kết nối');
 }
 
-function merge(){allS=mySB().map(function(s){return Object.assign({},s,grades[s.ma]||{});});}
+function merge(){allS=mySB().map(function(s){var merged=Object.assign({},s,grades[s.ma]||{});merged.ma=String(s.ma);return merged;});}
 function updateAll(){merge();buildSide();hsFil();dFil();updS();updP();renderSt();renderTK(tkKF);}
 function _saveGradesToStorage(){try{allGrades[curPeriod]=grades;localStorage.setItem('_allGrades',JSON.stringify(allGrades));}catch(e){}}
 function updS(){var ms=mySB();var d=allS.filter(isDone).length;T('c-nhap').textContent=d;T('c-chua').textContent=ms.length-d;T('c-tot').textContent=ms.length;T('c-nam').textContent=ms.filter(function(s){return s.gt==='Nam';}).length;T('c-nu').textContent=ms.filter(function(s){return s.gt==='Nữ';}).length;}
@@ -2388,11 +2388,14 @@ function openM(idx){
   T('mStat').textContent=isDone(s)?'✅ Đã có':'⏳ Chưa nhập';
   var kq=cTT(s.ma,s.khoi),es=editSubs(s.lop);
   var isMM=curPeriod!=='cn';
-  var h=isMM?'':'<div class="tt27"><h4>🤖 Kết quả tự động</h4><div class="tt27g">';
-  h+='<div class="tt27i"><div class="tl">KQGD</div><div class="tv" id="t-kq">'+kqL(kq)+'</div></div>';
-  h+='<div class="tt27i"><div class="tl">Lên lớp</div><div class="tv" id="t-ll">'+(g.len_lop?blH(g.len_lop,g.len_lop==='Có'?'bl-ht':'bl-cht'):'—')+'</div></div>';
-  h+='<div class="tt27i"><div class="tl">Khen thưởng</div><div class="tv" id="t-kh">'+khenL(g,kq)+'</div></div>';
-  h+='</div></div>';
+  var h='';
+  if(!isMM){
+    h+='<div class="tt27"><h4>🤖 Kết quả tự động</h4><div class="tt27g">';
+    h+='<div class="tt27i"><div class="tl">KQGD</div><div class="tv" id="t-kq">'+kqL(kq)+'</div></div>';
+    h+='<div class="tt27i"><div class="tl">Lên lớp</div><div class="tv" id="t-ll">'+(g.len_lop?blH(g.len_lop,g.len_lop==='Có'?'bl-ht':'bl-cht'):'—')+'</div></div>';
+    h+='<div class="tt27i"><div class="tl">Khen thưởng</div><div class="tv" id="t-kh">'+khenL(g,kq)+'</div></div>';
+    h+='</div></div>';
+  }
   h+='<div class="fsect"><div class="fsect-h"><h3>📚 Môn học</h3></div><div class="fgrid">';
   sj.forEach(function(mn){
     var name=mn[0],mk=mn[1],dk=mn[2],hD=mn[3],mv=g[mk]||'',dv=dk?(g[dk]!==undefined?g[dk]:''):'';
@@ -2426,6 +2429,7 @@ function openM(idx){
   });
   h+='</div></div>';
   var ll=g.len_lop||'',tb2=g._tieubieu||'';
+  if(!isMM){
   h+='<div class="fsect"><div class="fsect-h"><h3>🎓 Lên lớp & Khen</h3></div><div class="fgrid fg2">';
   h+='<div class="frow"><div class="flbl">Lên lớp</div><div class="rg" onchange="onGC('+idx+')">';
   h+='<label class="o-y"><input type="radio" name="r_ll" value="Có"'+(ll==='Có'?' checked':'')+'><span>✓ Có</span></label>';
@@ -2433,6 +2437,7 @@ function openM(idx){
   h+='<div class="frow"><div class="flbl">HS Tiêu biểu</div><div class="rg" onchange="onGC('+idx+')">';
   h+='<label class="o-xs"><input type="radio" name="r_tb" value="1"'+(tb2==='1'?' checked':'')+'><span>✓ Có</span></label>';
   h+='<label class="o-none"><input type="radio" name="r_tb" value=""'+(!tb2?' checked':'')+'><span>Không</span></label></div></div></div></div>';
+  }// end !isMM
   }// end canNLPC
   T('mBd').innerHTML=h;T('mBg').classList.add('on');
 }
@@ -2445,9 +2450,11 @@ function colG(){
   if(canNLPC){
     NL.forEach(function(nl){var r=document.querySelector('input[name="nl_'+nl[1]+'"]:checked');if(r)g[nl[1]]=r.value;});
     PC.forEach(function(pc){var r=document.querySelector('input[name="pc_'+pc[1]+'"]:checked');if(r)g[pc[1]]=r.value;});
-    var ll=document.querySelector('input[name="r_ll"]:checked');if(ll)g.len_lop=ll.value;
-    var tb=document.querySelector('input[name="r_tb"]:checked');if(tb)g._tieubieu=tb.value;
-    var kq=cTT(s.ma,s.khoi);if(kq){g.hoan_thanh=kq==='CHT'?'CHT':'HT';g.kqgd=kq;}
+    if(curPeriod==='cn'){
+      var ll=document.querySelector('input[name="r_ll"]:checked');if(ll)g.len_lop=ll.value;
+      var tb=document.querySelector('input[name="r_tb"]:checked');if(tb)g._tieubieu=tb.value;
+      var kq=cTT(s.ma,s.khoi);if(kq){g.hoan_thanh=kq==='CHT'?'CHT':'HT';g.kqgd=kq;}
+    }
   }
   return g;
 }
