@@ -565,12 +565,16 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   </div>
 
   <div class="sb-footer">
-    <div class="sb-user" onclick="doLogout()">
+    <div class="sb-user" onclick="openChangePass()" title="Đổi mật khẩu">
       <div class="sb-user-avatar" id="sb-avatar">A</div>
       <div>
         <div class="sb-user-name" id="sb-uname">Admin</div>
         <div class="sb-user-role" id="sb-urole">Quản trị viên</div>
       </div>
+    </div>
+    <div style="display:flex;gap:6px;padding:4px 8px 0">
+      <button onclick="openChangePass()" style="flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);border-radius:6px;padding:6px 0;font-size:10px;cursor:pointer" title="Đổi mật khẩu">🔑 Đổi MK</button>
+      <button onclick="doLogout()" style="flex:1;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:6px;padding:6px 0;font-size:10px;cursor:pointer" title="Đăng xuất">🚪 Đăng xuất</button>
     </div>
   </div>
 </nav>
@@ -969,6 +973,24 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   <div class="mft">
     <div class="mft-l" id="ahsErr" style="color:var(--rose);font-size:12px"></div>
     <div class="mft-r"><button class="btn bout" onclick="cm('addHSBg')">Hủy</button><button class="btn bp" onclick="saveNewHS()">💾 Thêm</button></div>
+  </div>
+</div>
+</div>
+
+<!-- Đổi mật khẩu Modal -->
+<div class="mbg" id="chPassBg">
+<div class="mbox sm" style="max-width:400px">
+  <div class="mhd" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)"><div><h2>🔑 Đổi mật khẩu</h2><p id="chpass-user"></p></div><button class="mcl" onclick="cm('chPassBg')">✕</button></div>
+  <div class="mbd">
+    <div class="uf">
+      <div class="ufi uf-full"><label>Mật khẩu hiện tại *</label><input type="password" id="cp-old" placeholder="Nhập mật khẩu cũ"></div>
+      <div class="ufi uf-full"><label>Mật khẩu mới *</label><input type="password" id="cp-new" placeholder="Tối thiểu 4 ký tự"></div>
+      <div class="ufi uf-full"><label>Nhập lại mật khẩu mới *</label><input type="password" id="cp-confirm" placeholder="Nhập lại để xác nhận"></div>
+    </div>
+  </div>
+  <div class="mft">
+    <div class="mft-l" id="cpErr" style="color:var(--rose);font-size:12px"></div>
+    <div class="mft-r"><button class="btn bout" onclick="cm('chPassBg')">Hủy</button><button class="btn bp" onclick="doChangePass()">🔑 Đổi mật khẩu</button></div>
   </div>
 </div>
 </div>
@@ -3204,6 +3226,44 @@ function saveEditHS(){
 // Đóng modal editHS khi click nền
 document.addEventListener('DOMContentLoaded',function(){
   var el=T('editHSBg');if(el)el.addEventListener('click',function(e){if(e.target.id==='editHSBg')cm('editHSBg');});
+});
+
+// ═══ ĐỔI MẬT KHẨU CÁ NHÂN ═══
+function openChangePass(){
+  if(!CU){toast('⚠️ Chưa đăng nhập','warn');return;}
+  T('chpass-user').textContent=CU.hoten||CU.username;
+  T('cp-old').value='';T('cp-new').value='';T('cp-confirm').value='';T('cpErr').textContent='';
+  T('chPassBg').classList.add('on');
+  setTimeout(function(){T('cp-old').focus();},200);
+}
+async function doChangePass(){
+  var oldPw=T('cp-old').value.trim();
+  var newPw=T('cp-new').value.trim();
+  var confirm=T('cp-confirm').value.trim();
+  T('cpErr').textContent='';
+  if(!oldPw){T('cpErr').textContent='⚠️ Vui lòng nhập mật khẩu hiện tại';return;}
+  if(!newPw||newPw.length<4){T('cpErr').textContent='⚠️ Mật khẩu mới phải có ít nhất 4 ký tự';return;}
+  if(newPw!==confirm){T('cpErr').textContent='⚠️ Mật khẩu mới không khớp';return;}
+  if(newPw===oldPw){T('cpErr').textContent='⚠️ Mật khẩu mới phải khác mật khẩu cũ';return;}
+  if(!GAS){T('cpErr').textContent='⚠️ Chưa kết nối hệ thống';return;}
+  try{
+    loader('Đang đổi mật khẩu...');
+    var r=await gasPost({action:'changePassword',username:CU.username,oldPassword:oldPw,newPassword:newPw});
+    loader();
+    if(r.ok){
+      cm('chPassBg');
+      toast('✅ Đổi mật khẩu thành công!','ok');
+    }else{
+      T('cpErr').textContent='❌ '+(r.error||'Lỗi không xác định');
+    }
+  }catch(e){
+    loader();
+    T('cpErr').textContent='❌ Lỗi kết nối: '+e.message;
+  }
+}
+// Click nền đóng modal
+document.addEventListener('DOMContentLoaded',function(){
+  var el=T('chPassBg');if(el)el.addEventListener('click',function(e){if(e.target.id==='chPassBg')cm('chPassBg');});
 });
 
 // ═══ MOBILE MENU ═══
