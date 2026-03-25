@@ -450,6 +450,27 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   .mob-hamburger{display:flex!important}
   .bottom-nav{display:flex!important}
 }
+
+/* ═══ HEADER KỲ ĐÁNH GIÁ ═══ */
+.hdr-ky{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#60a5fa 100%);color:white;padding:14px 22px;border-radius:14px;box-shadow:0 4px 16px rgba(30,64,175,.2),0 2px 4px rgba(0,0,0,.06);margin-bottom:14px;display:flex;align-items:center;gap:16px;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.hdr-ky::before{content:'';position:absolute;top:-30px;right:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+.hdr-ky::after{content:'';position:absolute;bottom:-40px;left:30%;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
+.hdr-ky:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(30,64,175,.25),0 4px 8px rgba(0,0,0,.08)}
+.hdr-ky-ico{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;backdrop-filter:blur(4px)}
+.hdr-ky-info{flex:1;position:relative;z-index:1}
+.hdr-ky-title{font-size:15px;font-weight:700;letter-spacing:.3px}
+.hdr-ky-sub{font-size:12px;opacity:.85;margin-top:3px;font-weight:400}
+.hdr-ky-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);font-size:12px;font-weight:700;letter-spacing:.5px;flex-shrink:0;position:relative;z-index:1;border:1px solid rgba(255,255,255,.15)}
+.hdr-ky-badge .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:dotPulse 2s infinite}
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:640px){
+  .hdr-ky{padding:12px 14px;gap:10px;border-radius:10px;flex-wrap:wrap}
+  .hdr-ky-ico{width:38px;height:38px;font-size:18px}
+  .hdr-ky-title{font-size:13px}
+  .hdr-ky-sub{font-size:11px}
+  .hdr-ky-badge{font-size:10px;padding:4px 10px}
+}
+
 </style>
 </head>
 <body>
@@ -550,6 +571,14 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
 
 <!-- HỌC SINH -->
 <div class="page on" id="pg-hs">
+  <div class="hdr-ky" id="hdr-ky-hs">
+    <div class="hdr-ky-ico">🎓</div>
+    <div class="hdr-ky-info">
+      <div class="hdr-ky-title" id="hky-title">Đánh giá học sinh</div>
+      <div class="hdr-ky-sub" id="hky-sub">Trường Tiểu học Diễn Liên · Năm học 2025–2026</div>
+    </div>
+    <div class="hdr-ky-badge" id="hky-badge"><span class="dot"></span><span id="hky-period">Cuối năm</span></div>
+  </div>
   <div class="cgrid">
     <div class="ccard"><div class="cc-ico" style="background:var(--blue-xl)">📚</div><div><div class="cc-val" id="c-tot">0</div><div class="cc-lbl">Tổng HS</div></div></div>
     <div class="ccard"><div class="cc-ico" style="background:#dbeafe">👦</div><div><div class="cc-val" id="c-nam">0</div><div class="cc-lbl">Nam</div></div></div>
@@ -2724,7 +2753,28 @@ function hbSaveBatch(){
 
 // XUẤT WORD — ĐÚNG MẪU HỌC BẠ TT27
 function _wordBlob(html){
-  var pre='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>@page{size:A4;margin:2cm 1.5cm}body{font-family:"Times New Roman",serif;font-size:13pt;line-height:1.5}table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:4px 6px;font-size:12pt}h2,h3{text-align:center;margin:6px 0}p{margin:4px 0}</style></head><body>';
+  var pre='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>@page{size:A4;margin:2cm 1.5cm}body{font-family:"Times New Roman",serif;font-size:13pt;line-height:1.5}table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:4px 6px;font-size:12pt}h2,h3{text-align:center;margin:6px 0}p{margin:4px 0}
+/* ═══ HEADER KỲ ĐÁNH GIÁ ═══ */
+.hdr-ky{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#60a5fa 100%);color:white;padding:14px 22px;border-radius:14px;box-shadow:0 4px 16px rgba(30,64,175,.2),0 2px 4px rgba(0,0,0,.06);margin-bottom:14px;display:flex;align-items:center;gap:16px;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.hdr-ky::before{content:'';position:absolute;top:-30px;right:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
+.hdr-ky::after{content:'';position:absolute;bottom:-40px;left:30%;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
+.hdr-ky:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(30,64,175,.25),0 4px 8px rgba(0,0,0,.08)}
+.hdr-ky-ico{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;backdrop-filter:blur(4px)}
+.hdr-ky-info{flex:1;position:relative;z-index:1}
+.hdr-ky-title{font-size:15px;font-weight:700;letter-spacing:.3px}
+.hdr-ky-sub{font-size:12px;opacity:.85;margin-top:3px;font-weight:400}
+.hdr-ky-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);font-size:12px;font-weight:700;letter-spacing:.5px;flex-shrink:0;position:relative;z-index:1;border:1px solid rgba(255,255,255,.15)}
+.hdr-ky-badge .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:dotPulse 2s infinite}
+@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:640px){
+  .hdr-ky{padding:12px 14px;gap:10px;border-radius:10px;flex-wrap:wrap}
+  .hdr-ky-ico{width:38px;height:38px;font-size:18px}
+  .hdr-ky-title{font-size:13px}
+  .hdr-ky-sub{font-size:11px}
+  .hdr-ky-badge{font-size:10px;padding:4px 10px}
+}
+
+</style></head><body>';
   return new Blob([pre+html+'</body></html>'],{type:'application/msword'});
 }
 function _dl(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);}
@@ -2851,6 +2901,14 @@ gp=function(id,el){
     T('cur-period-label').textContent=pc.name;
     T('cur-period-label').style.background=pc.color+'22';
     T('cur-period-label').style.color=pc.color;
+  }
+
+  // Update header kỳ đánh giá
+  var pc2=PERIODS.find(function(p){return p.id===curPeriod;});
+  if(pc2&&T('hky-period'))T('hky-period').textContent=pc2.name;
+  if(T('hky-title')){
+    var pageNames={'pg-hs':'Quản lý Học sinh','pg-diem':'Nhập kết quả đánh giá','pg-hocba':'Học bạ số','pg-status':'Trạng thái nhập liệu','pg-tk':'Thống kê chất lượng','pg-export':'Trích xuất dữ liệu'};
+    T('hky-title').textContent=(pageNames[id]||'Đánh giá học sinh')+' — '+pc2.name;
   }
   // Call pages
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
