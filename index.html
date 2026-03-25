@@ -1288,7 +1288,7 @@ function doLogout(){if(!confirm('Đăng xuất?'))return;localStorage.removeItem
 
 function parsePC(str){
   if(!str||!str.trim())return null;
-  var MM={'toán':'mon_Toán','tiếng việt':'mon_Tiếng_việt','đạo đức':'mon_Đạo_đức','tự nhiên và xã hội':'mon_Tự_nhiên_và_xã_hội','tnxh':'mon_Tự_nhiên_và_xã_hội','ngoại ngữ':'mon_Ngoại_ngữ','tiếng anh':'mon_Ngoại_ngữ','tin học':'mon_TH-CN_Tin_học','âm nhạc':'mon_Nghệ_thuật_Âm_nhạc','mĩ thuật':'mon_Nghệ_thuật_Mĩ_thuật','mỹ thuật':'mon_Nghệ_thuật_Mĩ_thuật','hđtn':'mon_Hoạt_động_trải_nghiệm','hdtn':'mon_Hoạt_động_trải_nghiệm','gdtc':'mon_Giáo_dục_thể_chất','thể chất':'mon_Giáo_dục_thể_chất','khoa học':'mon_Khoa_học','lịch sử và địa lí':'mon_Lịch_sử_và_Địa_lí','công nghệ':'mon_TH-CN_Công_nghệ'};
+  var MM={'toán':'mon_Toán','tiếng việt':'mon_Tiếng_việt','đạo đức':'mon_Đạo_đức','tự nhiên và xã hội':'mon_Tự_nhiên_và_xã_hội','tnxh':'mon_Tự_nhiên_và_xã_hội','ngoại ngữ':'mon_Ngoại_ngữ','tiếng anh':'mon_Ngoại_ngữ','tin học':'mon_TH-CN_Tin_học','âm nhạc':'mon_Nghệ_thuật_Âm_nhạc','mĩ thuật':'mon_Nghệ_thuật_Mĩ_thuật','mỹ thuật':'mon_Nghệ_thuật_Mĩ_thuật','hđtn':'mon_Hoạt_động_trải_nghiệm','hdtn':'mon_Hoạt_động_trải_nghiệm','gdtc':'mon_Giáo_dục_thể_chất','thể chất':'mon_Giáo_dục_thể_chất','khoa học':'mon_Khoa_học','lịch sử và địa lí':'mon_Lịch_sử_và_Địa_lí','lịch sử - địa lí':'mon_Lịch_sử_và_Địa_lí','lịch sử và địa lý':'mon_Lịch_sử_và_Địa_lí','lịch sử - địa lý':'mon_Lịch_sử_và_Địa_lí','ls&đl':'mon_Lịch_sử_và_Địa_lí','ls-đl':'mon_Lịch_sử_và_Địa_lí','ls&dl':'mon_Lịch_sử_và_Địa_lí','lsđl':'mon_Lịch_sử_và_Địa_lí','công nghệ':'mon_TH-CN_Công_nghệ','cn':'mon_TH-CN_Công_nghệ'};
   var res={};
   str.split(/\s*\+\s*/).forEach(function(part){
     var m=part.match(/^(.+?)\s*\(([^)]+)\)/);if(!m)return;
