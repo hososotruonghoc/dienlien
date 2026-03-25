@@ -877,6 +877,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   <div class="mft">
     <div class="mft-l" id="mStat"></div>
     <div class="mft-r">
+      <span style="font-size:10px;color:var(--slate4)">Tự lưu sau 45s</span>
       <button class="btn bout" onclick="cm('mBg')">Hủy</button>
       <button class="btn bg" onclick="saveCld()">☁️ Lưu lên Sheets</button>
     </div>
@@ -962,7 +963,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
 // ┌──────────────────────────────────────────────────────────┐
 // │  CẤU HÌNH — V2.0                                        │
 // └──────────────────────────────────────────────────────────┘
-var APP_VERSION='3.0';
+var APP_VERSION='3.2';
 // ★★★ URL Web App mới — đã cập nhật ★★★
 var DEFAULT_GAS = 'https://script.google.com/macros/s/AKfycbwp_zirfcGMH5Hosqmf-etxAabHRWra7mwiv1eQ-8YS6k-qRSLavKmpMGt_9eZHnw_c/exec';
 
@@ -1024,6 +1025,12 @@ var userPerm=null,importData=[],allUsers=[];
 var _dt={},PZ=30;
 // V2.0 state
 var nhanXet={},hbIdx=null,hbFiltered=[];
+
+// ═══ AUTO-SAVE STATE ═══
+var _dirtyGrades={};    // {ma: gradeObj} — các HS đã thay đổi chưa lưu lên Sheets
+var _autoSaveTimer=null;
+var _autoSaveInterval=45000; // 45 giây
+var _autoSaving=false;
 // PHASE 2: Period support
 var PERIODS=[
   {id:'gk1',name:'Giữa HK1',short:'GHK1',color:'#1565c0'},
@@ -1041,7 +1048,7 @@ function debounce(fn,ms){clearTimeout(_dt[fn.name]);_dt[fn.name]=setTimeout(fn,m
 function T(id){return document.getElementById(id);}
 function toast(m,t){var el=T('toast');el.textContent=m;el.className='toast on'+(t?' '+t:'');setTimeout(function(){el.className='toast';},3500);}
 function loader(t){if(t){T('ldr').className='ldr on';T('ldr-t').textContent=t;}else T('ldr').className='ldr';}
-function sUI(s,lb){var d=T('sdot');if(d)d.className='sync-dot'+(s?' '+s:'');T('slbl').textContent=lb||({ok:'Đã đồng bộ',err:'Lỗi kết nối',ld:'Đang đồng bộ...'}[s]||'Chưa kết nối');}
+function sUI(s,lb){var d=T('sdot');if(d)d.className='sync-dot'+(s?' '+s:'');var dirty=Object.keys(_dirtyGrades).length;var extra=dirty?' · '+dirty+' chờ lưu':'';T('slbl').textContent=(lb||({ok:'Đã đồng bộ',err:'Lỗi kết nối',ld:'Đang đồng bộ...'}[s]||'Chưa kết nối'))+extra;}
 function isDone(s){var g=grades[s.ma]||{};return !!(g.mon_Toán||g['mon_Tiếng_việt']||g.hoan_thanh);}
 
 function blH(v,c){return v?'<span class="bl '+(c||mC(v))+'">'+v+'</span>':'<span style="color:#ccc">—</span>';}
@@ -1101,6 +1108,75 @@ window.addEventListener('offline',function(){
 window.addEventListener('online',function(){
   toast('📡 Đã có kết nối — đang đồng bộ...','ok');
   if(GAS) syncNow(false);
+  // Lưu những thay đổi chưa gửi
+  if(Object.keys(_dirtyGrades).length) _flushAutoSave();
+});
+
+// ═══ AUTO-SAVE ENGINE ═══
+// Đánh dấu HS đã thay đổi — sẽ được lưu tự động sau 45s
+function _markDirty(ma){
+  if(!ma||!grades[ma]) return;
+  _dirtyGrades[ma]=grades[ma];
+  _scheduleAutoSave();
+}
+// Lên lịch auto-save (reset timer mỗi khi có thay đổi mới)
+function _scheduleAutoSave(){
+  if(_autoSaveTimer) clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(_flushAutoSave,_autoSaveInterval);
+}
+// Gửi tất cả thay đổi lên Sheets
+async function _flushAutoSave(){
+  _autoSaveTimer=null;
+  if(!GAS||_autoSaving||!navigator.onLine) return;
+  var keys=Object.keys(_dirtyGrades);
+  if(!keys.length) return;
+
+  _autoSaving=true;
+  var batch=keys.map(function(ma){return{ma:ma,grades:_dirtyGrades[ma]};});
+  // Xóa dirty trước khi gửi (nếu lỗi sẽ đánh dấu lại)
+  var savedBatch=JSON.parse(JSON.stringify(_dirtyGrades));
+  _dirtyGrades={};
+
+  try{
+    var r=await gasPost({
+      action:'autoSave',
+      period:curPeriod,
+      changes:batch,
+      user:CU?CU.username:'?'
+    });
+    _autoSaving=false;
+    if(r.ok&&r.saved>0){
+      sUI('ok');
+      var ts=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+      T('slbl').textContent='Tự động lưu '+ts+' ('+r.saved+' HS)';
+    }
+    if(r.errors&&r.errors.length){
+      // Đánh dấu lại những HS lỗi
+      r.errors.forEach(function(err){
+        var ma=err.split(':')[0];
+        if(savedBatch[ma]) _dirtyGrades[ma]=savedBatch[ma];
+      });
+      if(Object.keys(_dirtyGrades).length) _scheduleAutoSave();
+    }
+  }catch(e){
+    _autoSaving=false;
+    // Khôi phục dirty khi lỗi mạng
+    Object.keys(savedBatch).forEach(function(ma){_dirtyGrades[ma]=savedBatch[ma];});
+    _scheduleAutoSave(); // thử lại sau
+  }
+}
+// Lưu trước khi đóng trang
+window.addEventListener('beforeunload',function(e){
+  _saveGradesToStorage();
+  if(Object.keys(_dirtyGrades).length&&GAS&&navigator.onLine){
+    // Cố gửi sync bằng sendBeacon
+    var payload=JSON.stringify({
+      action:'autoSave',period:curPeriod,
+      changes:Object.keys(_dirtyGrades).map(function(ma){return{ma:ma,grades:_dirtyGrades[ma]};}),
+      user:CU?CU.username:'?'
+    });
+    navigator.sendBeacon(GAS+'?gaspost=1&d='+encodeURIComponent(payload));
+  }
 });
 
 // LOGIN
@@ -1248,7 +1324,7 @@ async function syncNow(silent){
 function initApp(){
   GAS=localStorage.getItem('gas_url')||DEFAULT_GAS||'';
   var savedVer=localStorage.getItem('_appVer')||'';
-  if(savedVer!=='3.1'){localStorage.removeItem('_allGrades');localStorage.removeItem('_grades');localStorage.setItem('_appVer','3.1');}
+  if(savedVer!=='3.2'){localStorage.removeItem('_allGrades');localStorage.removeItem('_grades');localStorage.setItem('_appVer','3.2');}
   try{allGrades=JSON.parse(localStorage.getItem('_allGrades')||'{}');}catch(e){allGrades={};}
   // Migrate old V2.0 flat grades to 'cn' period (one-time)
   try{
@@ -2386,6 +2462,7 @@ function openM(idx){
   if(!canE(s.lop)){toast('🔒 Không có quyền','err');return;}
   T('mTitle').textContent='✏️ '+s.ten;T('mSub').textContent='Lớp '+s.lop+' · '+s.ns;
   T('mStat').textContent=isDone(s)?'✅ Đã có':'⏳ Chưa nhập';
+  if(_dirtyGrades[s.ma]) T('mStat').textContent+=' · 🔄 Chờ auto-save';
   var kq=cTT(s.ma,s.khoi),es=editSubs(s.lop);
   var isMM=curPeriod!=='cn';
   var h='';
@@ -2442,7 +2519,7 @@ function openM(idx){
   T('mBd').innerHTML=h;T('mBg').classList.add('on');
 }
 function vD(inp){var v=inp.value;if(v===''){inp.classList.remove('inv');return;}var n=parseInt(v);if(isNaN(n)||n<0||n>10)inp.classList.add('inv');else{inp.classList.remove('inv');inp.value=String(n);}}
-function onGC(idx){var s=SB[idx];if(!s)return;var tmp=colG();grades[s.ma]=Object.assign({},grades[s.ma]||{},tmp);_saveGradesToStorage();var kq=cTT(s.ma,s.khoi),g=grades[s.ma];if(T('t-kq'))T('t-kq').innerHTML=kqL(kq);if(T('t-kh'))T('t-kh').innerHTML=khenL(g,kq);if(T('t-ll')){var ll=g.len_lop||'';T('t-ll').innerHTML=ll?blH(ll,ll==='Có'?'bl-ht':'bl-cht'):'—';}}
+function onGC(idx){var s=SB[idx];if(!s)return;var tmp=colG();grades[s.ma]=Object.assign({},grades[s.ma]||{},tmp);_saveGradesToStorage();_markDirty(s.ma);var kq=cTT(s.ma,s.khoi),g=grades[s.ma];if(T('t-kq'))T('t-kq').innerHTML=kqL(kq);if(T('t-kh'))T('t-kh').innerHTML=khenL(g,kq);if(T('t-ll')){var ll=g.len_lop||'';T('t-ll').innerHTML=ll?blH(ll,ll==='Có'?'bl-ht':'bl-cht'):'—';}}
 function colG(){
   var s=SB[eIdx];if(!s)return{};var k=String(s.khoi),sj=SUBJ[k]||SUBJ['1'],g=Object.assign({},grades[s.ma]||{});
   sj.forEach(function(mn){var mk=mn[1],dk=mn[2];var r=document.querySelector('input[name="m_'+mk+'"]:checked:not(:disabled)');if(r)g[mk]=r.value;if(dk){var d=T('fd_'+dk);if(d&&!d.disabled&&d.value.trim()!=='')g[dk]=String(parseInt(d.value)||0);}});
@@ -2480,16 +2557,17 @@ document.addEventListener('mousedown',function(e){
 function saveCld(){
   if(eIdx===null)return;if(document.querySelectorAll('.diemw input.inv').length){toast('❌ Điểm không hợp lệ','err');return;}
   var s=SB[eIdx],g=colG();g.updated_at=new Date().toLocaleString('vi-VN');g.updated_by=CU?CU.username:'?';
-  grades[s.ma]=g;_saveGradesToStorage()
+  grades[s.ma]=g;_saveGradesToStorage();
+  delete _dirtyGrades[s.ma]; // Xóa khỏi auto-save queue vì sẽ lưu thủ công
   cm('mBg');updateAll();
   if(!GAS){toast('⚠️ Chỉ lưu tạm trên máy','warn');return;}
   loader('Đang lưu lên Sheets...');
   function doSave(retry){
     gasPost({action:'saveGrade',ma:s.ma,grades:g,user:CU?CU.username:'?',period:curPeriod}).then(function(r){
-      loader();if(r.ok)toast('☁️ Đã lưu: '+s.ten,'ok');else toast('❌ '+r.error,'err');
+      loader();if(r.ok)toast('☁️ Đã lưu: '+s.ten+' → '+PERIODS.find(function(p){return p.id===curPeriod;}).name,'ok');else toast('❌ '+r.error,'err');
     }).catch(function(e){
       if(retry<2){setTimeout(function(){doSave(retry+1);},1500);}
-      else{loader();toast('⚠️ Lưu local OK, chưa lên Sheets','warn');}
+      else{loader();toast('⚠️ Lưu local OK, chưa lên Sheets','warn');_markDirty(s.ma);}
     });
   }doSave(0);
 }
