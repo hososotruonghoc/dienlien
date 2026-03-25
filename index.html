@@ -2617,7 +2617,7 @@ function saveAllLop(){
   }
   if(!batch.length){toast('ℹ️ Không có điểm để lưu','warn');return;}
   if(batch.length>50&&!confirm('Lưu '+batch.length+' HS lên Sheets?'))return;
-  var CHUNK=30,i=0,ok=0,fail=0;loader('Đang lưu '+batch.length+' HS...');
+  var CHUNK=50,i=0,ok=0,fail=0;loader('Đang lưu '+batch.length+' HS...');
   function next(){
     if(i>=batch.length){loader();toast(fail?'⚠️ '+ok+'/'+(ok+fail)+' HS':'☁️ Lưu '+ok+' HS!',fail?'warn':'ok');return;}
     T('ldr-t').textContent='Lưu '+Math.min(i+CHUNK,batch.length)+'/'+batch.length+'...';
