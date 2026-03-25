@@ -1828,9 +1828,9 @@ function _parseDiemExcel(raw,lop){
       var key=String(v||'').trim();
       if(!key) return;
       if(key==='_ma_'){iMa=ci;return;}
-      if(key.indexOf('mon_')===0||key.indexOf('nl_')===0||key.indexOf('pc_')===0||
+      if(key.indexOf('mon_')===0||key.indexOf('diem_')===0||key.indexOf('nl_')===0||key.indexOf('pc_')===0||
          key==='len_lop'||key==='hoan_thanh'||key==='khen_thuong'){
-        var type=key.indexOf('mon_')===0?'mon':(key==='len_lop'?'ll':'nlpc');
+        var type=key.indexOf('mon_')===0?'mon':key.indexOf('diem_')===0?'diem':(key==='len_lop'?'ll':'nlpc');
         colMap[key]={ci:ci,key:key,type:type};
       }
     });
@@ -1926,6 +1926,9 @@ function _applyParsedData(raw,dataStart,iMa,colMap,lop,k){
       if(col.type==='mon'){
         var m={T:'HTT',H:'HT',C:'CHT',HTT:'HTT',HT:'HT',CHT:'CHT'}[val.toUpperCase()];
         if(m){g[col.key]=m;hasData=true;}
+      }else if(col.type==='diem'){
+        var num=parseInt(val);
+        if(!isNaN(num)&&num>=0&&num<=10){g[col.key]=String(num);hasData=true;}
       }else if(col.type==='nlpc'){
         var m2={'T':'T','Đ':'Đ','D':'Đ','C':'CCG','CCG':'CCG'}[val.toUpperCase()]||{'T':'T','Đ':'Đ','C':'CCG'}[val];
         if(m2){g[col.key]=m2;hasData=true;}
