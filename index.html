@@ -1273,7 +1273,7 @@ function initApp(){
 
 function merge(){allS=mySB().map(function(s){return Object.assign({},s,grades[s.ma]||{});});}
 function updateAll(){merge();buildSide();hsFil();dFil();updS();updP();renderSt();renderTK(tkKF);}
-function _saveGradesToStorage(){_saveGradesToStorage()}
+function _saveGradesToStorage(){try{allGrades[curPeriod]=grades;localStorage.setItem('_allGrades',JSON.stringify(allGrades));}catch(e){}}
 function updS(){var ms=mySB();var d=allS.filter(isDone).length;T('c-nhap').textContent=d;T('c-chua').textContent=ms.length-d;T('c-tot').textContent=ms.length;T('c-nam').textContent=ms.filter(function(s){return s.gt==='Nam';}).length;T('c-nu').textContent=ms.filter(function(s){return s.gt==='Nữ';}).length;}
 function updP(){var ms=mySB();var d=allS.filter(isDone).length,p=ms.length?Math.round(d/ms.length*100):0;if(T('s-prog'))T('s-prog').textContent=d+'/'+ms.length;if(T('s-pb'))T('s-pb').style.width=p+'%';if(T('s-pct'))T('s-pct').textContent=p+'%';if(T('sb-tot'))T('sb-tot').textContent=ms.length;}
 
