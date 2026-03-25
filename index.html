@@ -535,8 +535,8 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
     <div class="period-grid">
       <button class="period-btn" data-pid="gk1" onclick="switchPeriod('gk1')">Giữa<br>HK1</button>
       <button class="period-btn" data-pid="ck1" onclick="switchPeriod('ck1')">Cuối<br>HK1</button>
-      <button class="period-btn" data-pid="gk2" onclick="switchPeriod('gk2')">Giữa<br>HK2</button>
-      <button class="period-btn on" data-pid="cn" onclick="switchPeriod('cn')">Cuối<br>năm</button>
+      <button class="period-btn on" data-pid="gk2" onclick="switchPeriod('gk2')">Giữa<br>HK2</button>
+      <button class="period-btn" data-pid="cn" onclick="switchPeriod('cn')">Cuối<br>năm</button>
     </div>
     <div id="admin-lock-panel" style="display:none;margin-top:8px;padding:6px 8px;background:rgba(255,255,255,.08);border-radius:8px">
       <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:5px;text-align:center">🔐 Admin: Khóa/Mở kỳ</div>
@@ -593,7 +593,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
 <div class="topbar2">
   <button class="mob-hamburger" onclick="toggleMobMenu()">☰</button>
   <span class="topbar2-title" id="page-title">Học sinh</span>
-  <span class="topbar2-period" id="cur-period-label" style="background:var(--rose-l);color:var(--rose)">Cuối năm</span>
+  <span class="topbar2-period" id="cur-period-label" style="background:#e6510022;color:#e65100">Giữa HK2</span>
   <div class="topbar2-right">
     <div class="sync-badge" id="sync-pill" onclick="syncNow()"><div class="sync-dot" id="sdot"></div><span id="slbl">Chưa kết nối</span></div>
   </div>
@@ -610,7 +610,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       <div class="hdr-ky-title" id="hky-title">Quản lý Hồ sơ Học sinh</div>
       <div class="hdr-ky-sub" id="hky-sub">Trường Tiểu học Diễn Liên · Năm học 2025–2026</div>
     </div>
-    <div class="hdr-ky-badge" id="hky-badge"><span class="dot"></span><span id="hky-period">Cuối năm</span></div>
+    <div class="hdr-ky-badge" id="hky-badge"><span class="dot"></span><span id="hky-period">Giữa HK2</span></div>
   </div>
   <div class="cgrid">
     <div class="ccard"><div class="cc-ico" style="background:var(--blue-xl)">📚</div><div><div class="cc-val" id="c-tot">0</div><div class="cc-lbl">Tổng HS</div></div></div>
@@ -1111,7 +1111,7 @@ var PERIODS=[
   {id:'gk2',name:'Giữa HK2',short:'GHK2',color:'#e65100'},
   {id:'cn',name:'Cuối năm',short:'CN',color:'#c62828'}
 ];
-var curPeriod='cn'; // Default = cuối năm (backward compatible)
+var curPeriod='gk2'; // Default = Giữa HK2
 var allGrades={}; // {period: {ma: gradeObj}}
 var lockedPeriods={}; // {gk1:true, ck1:true, ...} — Admin khóa kỳ
 
