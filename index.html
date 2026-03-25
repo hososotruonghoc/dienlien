@@ -1065,6 +1065,27 @@ var allGrades={}; // {period: {ma: gradeObj}}
 
 var NL_CHUNG_IDX=3; // 3 NL đầu là NL chung, còn lại là NL đặc thù
 
+// ═══ NL ĐẶC THÙ THEO KHỐI (TT27) ═══
+// K1-2: 5 NL đặc thù (Ngôn ngữ, Tính toán, Khoa học, Thẩm mĩ, Thể chất)
+// K3:   +Công nghệ = 6 NL đặc thù  
+// K4-5: +Công nghệ, Tin học = 7 NL đặc thù
+function _getNLDacThu(khoi){
+  var base=NL.slice(NL_CHUNG_IDX).map(function(x){return[x[0],x[1]];});
+  // base = [Ngôn ngữ, Tính toán, Khoa học, Thẩm mĩ, Thể chất]
+  if(khoi>=4){
+    // K4-5: thêm Công nghệ + Tin học (sau Khoa học, trước Thẩm mĩ)
+    base.splice(3,0,['Công nghệ','nl_Công_nghệ'],['Tin học','nl_Tin_học']);
+  }else if(khoi>=3){
+    // K3: thêm Công nghệ
+    base.splice(3,0,['Công nghệ','nl_Công_nghệ']);
+  }
+  return base;
+}
+// Trả về toàn bộ NL (chung + đặc thù) cho 1 khối
+function _getAllNL(khoi){
+  return NL.slice(0,NL_CHUNG_IDX).concat(_getNLDacThu(khoi));
+}
+
 // UTILS
 function debounce(fn,ms){clearTimeout(_dt[fn.name]);_dt[fn.name]=setTimeout(fn,ms);}
 function T(id){return document.getElementById(id);}
@@ -1413,15 +1434,16 @@ function mkPagi(pbId,piId,cur,arr,fn){
 // TT27
 function cTT(ma,k){
   var g=grades[ma]||{},sj=SUBJ[String(k)]||SUBJ['1'];
+  var allNL=_getAllNL(parseInt(k));
   if(sj.filter(function(x){return g[x[1]];}).length<sj.length)return null;
-  if(NL.filter(function(x){return g[x[1]];}).length<NL.length)return null;
+  if(allNL.filter(function(x){return g[x[1]];}).length<allNL.length)return null;
   if(PC.filter(function(x){return g[x[1]];}).length<PC.length)return null;
   var sc=sj.filter(function(x){return x[2]&&x[3];}).map(function(x){var v=g[x[2]];return v!==undefined&&v!==''?parseInt(v):-1;}).filter(function(x){return x>=0;});
   var ms=sc.length>0?Math.min.apply(null,sc):999;
   var aHTT=sj.every(function(x){return g[x[1]]==='HTT';});
-  var aT=NL.concat(PC).every(function(x){return g[x[1]]==='T';});
+  var aT=allNL.concat(PC).every(function(x){return g[x[1]]==='T';});
   var aNoCHT=sj.every(function(x){return g[x[1]]!=='CHT';});
-  var aNoCCG=NL.concat(PC).every(function(x){return g[x[1]]!=='CCG';});
+  var aNoCCG=allNL.concat(PC).every(function(x){return g[x[1]]!=='CCG';});
   if(aHTT&&aT&&ms>=9)return'HTXS';if(aHTT&&aT&&ms>=7)return'HTT';
   if(aNoCHT&&aNoCCG&&(sc.length===0||ms>=5))return'HT';return'CHT';
 }
@@ -1492,7 +1514,7 @@ function renderD(){
   NL.slice(0,NL_CHUNG_IDX).forEach(function(nl){
     th+='<th class="c" style="min-width:32px;font-size:8px;line-height:1.2;background:#1565c0">'+nl[0].split(' ')[0].substring(0,4)+'</th>';
   });
-  NL.slice(NL_CHUNG_IDX).forEach(function(nl){
+  _getNLDacThu(curK).forEach(function(nl){
     th+='<th class="c" style="min-width:32px;font-size:8px;line-height:1.2;background:#e65100">'+nl[0].substring(0,4)+'</th>';
   });
   PC.forEach(function(pc){
@@ -1506,7 +1528,8 @@ function renderD(){
   T('d-thead').innerHTML=th;
 
   var tot=dF.length,rows=dF.slice((dP-1)*PZ,dP*PZ),tb=T('d-tb');
-  var colSpan=2+sj.length+NL.length+PC.length+(isMid?1:3);
+  var allNLForK=_getAllNL(curK);
+  var colSpan=2+sj.length+allNLForK.length+PC.length+(isMid?1:3);
   if(!tot){tb.innerHTML='<tr><td colspan="'+colSpan+'"><div class="empty"><div class="ei">📋</div><p>Không có HS</p></div></td></tr>';T('d-rc').textContent='';return;}
   tb.innerHTML=rows.map(function(s){
     var gi=SB.findIndex(function(b){return b.ma===s.ma;}),g=grades[s.ma]||{},kq=cTT(s.ma,s.khoi);
@@ -1525,8 +1548,8 @@ function renderD(){
         r+='<td class="c" style="padding:3px 2px">'+( mv?'<span style="font-size:9px;font-weight:600;'+({HTT:'color:#00695c',HT:'color:var(--p)',CHT:'color:var(--r)'}[mv]||'')+'">'+({HTT:'T',HT:'H',CHT:'C'}[mv]||mv)+'</span>':'<span style="color:#ddd;font-size:9px">—</span>')+'</td>';
       }
     });
-    // NL
-    NL.forEach(function(nl){
+    // NL (dynamic theo khối)
+    allNLForK.forEach(function(nl){
       var v=g[nl[1]]||'';
       r+='<td class="c" style="padding:2px 1px;font-size:9px;'+(v==='T'?'color:#00695c;font-weight:700':v==='Đ'?'color:var(--p)':v==='CCG'?'color:var(--r)':'color:#ddd')+'">'+(v||'—')+'</td>';
     });
@@ -1634,10 +1657,12 @@ function createMauChuan(){
 
   // NL + PC (giống nhau cho mọi khối)
   var nlcCols=['Tự chủ<br>và tự học','Giao tiếp<br>và hợp tác','Giải quyết<br>vấn đề<br>và sáng<br>tạo'];
-  var nldCols=['Ngôn<br>ngữ','Tính<br>toán','Khoa<br>học','Thẩm<br>mĩ','Thể<br>chất'];
+  // NL đặc thù — DYNAMIC theo khối (TT27)
+  var nlDacThuData=_getNLDacThu(k); // [{name, key}...]
+  var nldCols=nlDacThuData.map(function(nl){return nl[0].replace(/ /g,'<br>');});
   var pcCols=['Yêu<br>nước','Nhân<br>ái','Chăm<br>chỉ','Trung<br>thực','Trách<br>nhiệm'];
   var nlcKeys=['nl_Tự_chủ_và_tự_học','nl_Giao_tiếp_và_hợp_tác','nl_Giải_quyết_vấn_đề_và_sáng_tạo'];
-  var nldKeys=['nl_Ngôn_ngữ','nl_Tính_toán','nl_Khoa_học','nl_Thẩm_mĩ','nl_Thể_chất'];
+  var nldKeys=nlDacThuData.map(function(nl){return nl[1];});
   var pcKeys=['pc_Yêu_nước','pc_Nhân_ái','pc_Chăm_chỉ','pc_Trung_thực','pc_Trách_nhiệm'];
 
   // Tail cols (chỉ CN)
@@ -1864,7 +1889,7 @@ function _parseDiemExcel(raw,lop){
     {p:['tu chu'],k:'nl_Tự_chủ_và_tự_học',t:'nlpc'},{p:['giao tiep'],k:'nl_Giao_tiếp_và_hợp_tác',t:'nlpc'},
     {p:['giai quyet','sang tao'],k:'nl_Giải_quyết_vấn_đề_và_sáng_tạo',t:'nlpc'},
     {p:['ngon ngu'],k:'nl_Ngôn_ngữ',t:'nlpc'},{p:['tinh toan'],k:'nl_Tính_toán',t:'nlpc'},
-    {p:['khoa hoc'],k:'nl_Khoa_học',t:'nlpc'},{p:['tham mi','tham my'],k:'nl_Thẩm_mĩ',t:'nlpc'},
+    {p:['khoa hoc'],k:'nl_Khoa_học',t:'nlpc'},{p:['cong nghe'],k:'nl_Công_nghệ',t:'nlpc'},{p:['tin hoc'],k:'nl_Tin_học',t:'nlpc'},{p:['tham mi','tham my'],k:'nl_Thẩm_mĩ',t:'nlpc'},
     {p:['yeu nuoc'],k:'pc_Yêu_nước',t:'nlpc'},{p:['nhan ai'],k:'pc_Nhân_ái',t:'nlpc'},
     {p:['cham chi'],k:'pc_Chăm_chỉ',t:'nlpc'},{p:['trung thuc'],k:'pc_Trung_thực',t:'nlpc'},
     {p:['trach nhiem'],k:'pc_Trách_nhiệm',t:'nlpc'},{p:['len lop'],k:'len_lop',t:'ll'}
@@ -2493,8 +2518,9 @@ function openM(idx){
   // NL + PC + Lên lớp: CHỈ hiện cho Admin hoặc GVCN (có lop_phu_trach)
   var canNLPC=!CU||CU.role==='admin'||!!(CU.lop&&CU.lop.trim());
   if(canNLPC){
+  var allNL=_getAllNL(parseInt(k));
   h+='<div class="fsect"><div class="fsect-h"><h3>🧠 Năng lực</h3></div><div class="fgrid fg2">';
-  NL.forEach(function(nl){var v=g[nl[1]]||'';
+  allNL.forEach(function(nl){var v=g[nl[1]]||'';
     h+='<div class="frow"><div class="flbl" style="font-size:12px">'+nl[0]+'</div><div class="rg" onchange="onGC('+idx+')">';
     h+='<label class="o-t"><input type="radio" name="nl_'+nl[1]+'" value="T"'+(v==='T'?' checked':'')+'><span>Tốt</span></label>';
     h+='<label class="o-d"><input type="radio" name="nl_'+nl[1]+'" value="Đ"'+(v==='Đ'?' checked':'')+'><span>Đạt</span></label>';
@@ -2528,7 +2554,8 @@ function colG(){
   sj.forEach(function(mn){var mk=mn[1],dk=mn[2];var r=document.querySelector('input[name="m_'+mk+'"]:checked:not(:disabled)');if(r)g[mk]=r.value;if(dk){var d=T('fd_'+dk);if(d&&!d.disabled&&d.value.trim()!=='')g[dk]=String(parseInt(d.value)||0);}});
   var canNLPC=!CU||CU.role==='admin'||!!(CU.lop&&CU.lop.trim());
   if(canNLPC){
-    NL.forEach(function(nl){var r=document.querySelector('input[name="nl_'+nl[1]+'"]:checked');if(r)g[nl[1]]=r.value;});
+    var allNL=_getAllNL(parseInt(k));
+    allNL.forEach(function(nl){var r=document.querySelector('input[name="nl_'+nl[1]+'"]:checked');if(r)g[nl[1]]=r.value;});
     PC.forEach(function(pc){var r=document.querySelector('input[name="pc_'+pc[1]+'"]:checked');if(r)g[pc[1]]=r.value;});
     if(curPeriod==='cn'){
       var ll=document.querySelector('input[name="r_ll"]:checked');if(ll)g.len_lop=ll.value;
