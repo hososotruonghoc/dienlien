@@ -1721,173 +1721,135 @@ function createMauChuan(){
   var k=parseInt(lop);
   var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
   var periodCode={gk1:'GK1',ck1:'CK1',gk2:'GK2',cn:'CN'}[curPeriod]||'GK2';
-  var isMid=(curPeriod==='gk1'||curPeriod==='gk2'); // Giữa kỳ
+  var isMid=(curPeriod==='gk1'||curPeriod==='gk2');
   var isCN=(curPeriod==='cn');
 
-  // Lấy HS theo lớp
   var hsLop=mySB().filter(function(s){return s.lop===lop;});
   if(!hsLop.length){toast('⚠️ Không có HS lớp '+lop,'warn');return;}
 
-  // ═══ LẤY DANH SÁCH MÔN THEO KHỐI từ SUBJ ═══
   var sj=_visibleSubj(k);
 
-  // Xác định môn nào có cột Điểm KTĐK
-  // TT27 Đ7: Giữa kỳ K1-3 = KHÔNG có điểm; K4-5 giữa kỳ = CÓ điểm
-  // Cuối kỳ/cuối năm: tất cả khối có điểm nếu môn có cấu trúc điểm
   function hasDiem(mn){
-    if(!mn[2]||!mn[3]) return false; // Môn không có cấu trúc điểm
-    if(!isMid) return true; // CK1/CN luôn có điểm
-    if(k>=4) return true;   // K4-5 giữa kỳ vẫn có điểm
-    return false;            // K1-3 giữa kỳ KHÔNG có điểm
+    if(!mn[2]||!mn[3]) return false;
+    if(!isMid) return true;
+    if(k>=4) return true;
+    return false;
   }
 
-  // ═══ BUILD CỘT HEADER ═══
-  var infoCols=['STT','Mã lớp','Mã học<br>sinh','Họ tên','Ngày sinh'];
-  var monHeaders=[]; // [{name, key, diemKey, hasDiem, colSpan}]
-  var monKeys=[];    // flat array of keys for key row
+  // ═══ BUILD HEADERS ═══
+  var r1=['','','','',''];     // Group headers
+  var r2=['','','','',''];     // Sub headers
+  var r3=['STT','Mã lớp','Mã học sinh','Họ tên','Ngày sinh']; // Detail
+  var keyRow=['__KEYS__','_lop_','_ma_','_ten_','_ns_'];       // Key row
+  var merges=[];
+  var ci=5; // current column index
 
+  // Merge info cols (3 rows)
+  for(var i=0;i<5;i++) merges.push({s:{r:0,c:i},e:{r:2,c:i}});
+
+  // ── MÔN HỌC ──
+  var monStart=ci;
   sj.forEach(function(mn){
-    var name=mn[0];
     var hd=hasDiem(mn);
     if(hd){
-      // Môn có điểm: 2 cột (Mức đạt + Điểm)
-      monHeaders.push({name:name,key:mn[1],diemKey:mn[2],hasDiem:true,colSpan:2});
-      monKeys.push(mn[1]);
-      monKeys.push(mn[2]);
+      r1.push('');r1.push('');
+      r2.push(mn[0]);r2.push('');
+      r3.push('Mức đạt');r3.push('Điểm KTĐK');
+      keyRow.push(mn[1]);keyRow.push(mn[2]);
+      merges.push({s:{r:1,c:ci},e:{r:1,c:ci+1}});
+      ci+=2;
     }else{
-      // Môn chỉ có mức đạt: 1 cột
-      monHeaders.push({name:name,key:mn[1],diemKey:null,hasDiem:false,colSpan:1});
-      monKeys.push(mn[1]);
+      r1.push('');
+      r2.push(mn[0]);
+      r3.push('');
+      keyRow.push(mn[1]);
+      merges.push({s:{r:1,c:ci},e:{r:2,c:ci}});
+      ci++;
     }
   });
-  var totalMonCols=monHeaders.reduce(function(s,m){return s+m.colSpan;},0);
+  var monEnd=ci-1;
+  r1[monStart]='Môn học và hoạt động giáo dục';
+  merges.push({s:{r:0,c:monStart},e:{r:0,c:monEnd}});
 
-  // NL + PC (giống nhau cho mọi khối)
-  var nlcCols=['Tự chủ<br>và tự học','Giao tiếp<br>và hợp tác','Giải quyết<br>vấn đề<br>và sáng<br>tạo'];
-  // NL đặc thù — DYNAMIC theo khối (TT27)
-  var nlDacThuData=_getNLDacThu(k); // [{name, key}...]
-  var nldCols=nlDacThuData.map(function(nl){return nl[0].replace(/ /g,'<br>');});
-  var pcCols=['Yêu<br>nước','Nhân<br>ái','Chăm<br>chỉ','Trung<br>thực','Trách<br>nhiệm'];
-  var nlcKeys=['nl_Tự_chủ_và_tự_học','nl_Giao_tiếp_và_hợp_tác','nl_Giải_quyết_vấn_đề_và_sáng_tạo'];
-  var nldKeys=nlDacThuData.map(function(nl){return nl[1];});
-  var pcKeys=['pc_Yêu_nước','pc_Nhân_ái','pc_Chăm_chỉ','pc_Trung_thực','pc_Trách_nhiệm'];
-
-  // Tail cols (chỉ CN)
-  var tailHeaders=isCN?['Hoàn thành<br>CT lớp học','Lên<br>lớp','Khen<br>thưởng']:[];
-  var tailKeys=isCN?['hoan_thanh','len_lop','khen_thuong']:[];
-
-  // ═══ STYLES ═══
-  var bdr='border:0.5pt solid #aaa;';
-  var ctr='text-align:center;vertical-align:middle;';
-  var bold='font-weight:bold;';
-  var wrap='word-wrap:break-word;';
-  var sGreen='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
-  var sGreenDk='background:#92d050;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sBlue='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sOrangeDk='background:#f4b084;'+bdr+ctr+bold+'font-size:9pt;';
-  var sOrange='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sPurpleDk='background:#9bc2e6;'+bdr+ctr+bold+'font-size:9pt;';
-  var sPurple='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sYellow='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sData=bdr+ctr+'font-size:10pt;';
-  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
-  var h='';
-
-  // ── ROW 1: Group headers ──
-  h+='<tr height="30">';
-  for(var i=0;i<5;i++) h+='<td rowspan="3" style="'+sGreen+'">'+infoCols[i]+'</td>';
-  h+='<td colspan="'+totalMonCols+'" style="'+sGreenDk+'">Môn học và hoạt động giáo dục</td>';
-  h+='<td colspan="'+(nlcCols.length+nldCols.length)+'" style="'+sOrangeDk+'">Năng lực cốt lõi</td>';
-  h+='<td colspan="'+pcCols.length+'" style="'+sPurpleDk+'">Phẩm chất chủ yếu</td>';
-  tailHeaders.forEach(function(t){h+='<td rowspan="3" style="'+sYellow+'">'+t+'</td>';});
-  h+='</tr>';
-
-  // ── ROW 2: Tên môn + sub-groups ──
-  h+='<tr height="25">';
-  monHeaders.forEach(function(m){
-    if(m.hasDiem){
-      h+='<td colspan="2" style="'+sBlue+'">'+m.name+'</td>';
-    }else{
-      h+='<td rowspan="2" style="'+sBlue+'">'+m.name+'</td>';
-    }
+  // ── NĂNG LỰC CHUNG ──
+  var nlcStart=ci;
+  NL.slice(0,NL_CHUNG_IDX).forEach(function(nl){
+    r1.push('');r2.push('');r3.push(nl[0]);keyRow.push(nl[1]);
+    ci++;
   });
-  h+='<td colspan="'+nlcCols.length+'" style="'+sOrange+'">Năng lực chung</td>';
-  h+='<td colspan="'+nldCols.length+'" style="'+sOrange+'">Năng lực đặc thù</td>';
-  pcCols.forEach(function(p){h+='<td rowspan="2" style="'+sPurple+'">'+p+'</td>';});
-  h+='</tr>';
+  var nlcEnd=ci-1;
+  r2[nlcStart]='Năng lực chung';
+  merges.push({s:{r:1,c:nlcStart},e:{r:1,c:nlcEnd}});
 
-  // ── ROW 3: Sub-headers (Mức đạt/Điểm cho môn có điểm, NL chi tiết) ──
-  h+='<tr height="45">';
-  monHeaders.forEach(function(m){
-    if(m.hasDiem){
-      h+='<td style="'+sBlue+'">Mức<br>đạt</td>';
-      h+='<td style="'+sBlue+'">Điểm<br>KTĐK</td>';
-    }
-    // Môn không có điểm đã rowspan=2 ở trên
+  // ── NĂNG LỰC ĐẶC THÙ ──
+  var nldStart=ci;
+  var nlDacThu=_getNLDacThu(k);
+  nlDacThu.forEach(function(nl){
+    r1.push('');r2.push('');r3.push(nl[0]);keyRow.push(nl[1]);
+    ci++;
   });
-  nlcCols.forEach(function(n){h+='<td style="'+sOrange+'">'+n+'</td>';});
-  nldCols.forEach(function(n){h+='<td style="'+sOrange+'">'+n+'</td>';});
-  h+='</tr>';
+  var nldEnd=ci-1;
+  r2[nldStart]='Năng lực đặc thù';
+  merges.push({s:{r:1,c:nldStart},e:{r:1,c:nldEnd}});
 
-  // ── ROW 4: HIDDEN KEY ROW (parser đọc chính xác 100%) ──
-  var sHide='font-size:1pt;color:#fff;border:none;height:1px;';
-  h+='<tr height="1">';
-  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td><td style="'+sHide+'">_ns_</td>';
-  monKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  nlcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  nldKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  pcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  h+='</tr>';
+  r1[nlcStart]='Năng lực cốt lõi';
+  merges.push({s:{r:0,c:nlcStart},e:{r:0,c:nldEnd}});
 
-  // ── DATA ROWS ──
-  hsLop.forEach(function(s,i){
+  // ── PHẨM CHẤT ──
+  var pcStart=ci;
+  PC.forEach(function(pc){
+    r1.push('');r2.push(pc[0]);r3.push('');keyRow.push(pc[1]);
+    merges.push({s:{r:1,c:ci},e:{r:2,c:ci}});
+    ci++;
+  });
+  var pcEnd=ci-1;
+  r1[pcStart]='Phẩm chất chủ yếu';
+  merges.push({s:{r:0,c:pcStart},e:{r:0,c:pcEnd}});
+
+  // ── CUỐI NĂM ──
+  if(isCN){
+    ['Hoàn thành CT','Lên lớp','Khen thưởng'].forEach(function(h){
+      r1.push(h);r2.push('');r3.push('');keyRow.push(h==='Lên lớp'?'len_lop':h==='Khen thưởng'?'khen_thuong':'hoan_thanh');
+      merges.push({s:{r:0,c:ci},e:{r:2,c:ci}});
+      ci++;
+    });
+  }
+
+  // ═══ DATA ROWS ═══
+  var dataRows=hsLop.map(function(s,i){
+    var g=grades[s.ma]||{};
     var ns=String(s.ns||'');
     if(ns.indexOf('GMT')>=0||ns.indexOf('T')>=0){
       try{var d=new Date(ns);ns=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}catch(e){}
     }
-    h+='<tr height="28">';
-    h+='<td style="'+sData+'">'+(i+1)+'</td>';
-    h+='<td style="'+sData+'">'+s.lop+'</td>';
-    h+='<td style="'+sData+'">'+s.ma+'</td>';
-    h+='<td style="'+sName+'">'+s.ten+'</td>';
-    h+='<td style="'+sData+'">'+ns+'</td>';
-    // Môn học (empty data cells)
-    monKeys.forEach(function(){h+='<td style="'+sData+'"></td>';});
-    // NL + PC
-    nlcKeys.concat(nldKeys).concat(pcKeys).forEach(function(){h+='<td style="'+sData+'"></td>';});
-    // Tail
-    tailKeys.forEach(function(){h+='<td style="'+sData+'"></td>';});
-    h+='</tr>';
+    var row=[i+1,s.lop,String(s.ma),s.ten,ns];
+    sj.forEach(function(mn){
+      var mv=g[mn[1]]||'';
+      row.push(mv?_storeToDisplay(mv,'mon'):'');
+      if(hasDiem(mn)) row.push(g[mn[2]]||'');
+    });
+    NL.slice(0,NL_CHUNG_IDX).forEach(function(nl){var v=g[nl[1]]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
+    nlDacThu.forEach(function(nl){var v=g[nl[1]]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
+    PC.forEach(function(pc){var v=g[pc[1]]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
+    if(isCN){var kq=cTT(s.ma,s.khoi);row.push(kq?kqText(kq):'');row.push(g.len_lop||'');row.push('');}
+    return row;
   });
 
-  // ═══ COL WIDTHS ═══
-  var totalDataCols=totalMonCols+nlcCols.length+nldCols.length+pcCols.length+tailHeaders.length;
-  var colW='<col width="40"><col width="55"><col width="100"><col width="180"><col width="95">';
-  monHeaders.forEach(function(m){
-    if(m.hasDiem){colW+='<col width="50"><col width="45">';}
-    else{colW+='<col width="55">';}
-  });
-  for(var i=0;i<nlcCols.length+nldCols.length;i++) colW+='<col width="65">';
-  for(var i=0;i<pcCols.length;i++) colW+='<col width="60">';
-  for(var i=0;i<tailHeaders.length;i++) colW+='<col width="70">';
+  // ═══ BUILD XLSX ═══
+  var aoa=[r1,r2,r3,keyRow].concat(dataRows);
+  var ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges']=merges;
 
-  // ═══ XUẤT FILE ═══
-  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
-    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
-    +'<x:Name>'+periodCode+'_Lop'+lop+'</x:Name>'
-    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal><x:TopRowBottomPane>4</x:TopRowBottomPane>'
-    +'<x:SplitVertical>5</x:SplitVertical><x:LeftColumnRightPane>5</x:LeftColumnRightPane></x:WorksheetOptions>'
-    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
-    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
-    +'<body><table>'+colW+h+'</table></body></html>';
+  // Col widths
+  var cols=[];
+  cols.push({wch:5},{wch:7},{wch:14},{wch:22},{wch:12});
+  for(var w=5;w<ci;w++) cols.push({wch:w<monEnd+1?8:9});
+  ws['!cols']=cols;
 
-  var blob=new Blob([html],{type:'application/vnd.ms-excel'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='Mau_'+periodCode+'_Khoi'+k+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.xls';
-  a.click();URL.revokeObjectURL(a.href);
-  toast('📥 Đã tải: '+periodName+' — Lớp '+lop+' (Khối '+k+', '+hsLop.length+' HS)','ok');
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,periodCode+'_Lop'+lop);
+  XLSX.writeFile(wb,'Mau_'+periodCode+'_Khoi'+k+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('📥 Đã tải: '+periodName+' — Lớp '+lop+' ('+hsLop.length+' HS)','ok');
 }
 
 function onDiemFile(inp){
@@ -2128,62 +2090,6 @@ function _subjDiemKey(monKey,khoi){
 }
 
 
-function _getGVSubjects(){
-  if(!userPerm||!Object.keys(userPerm).length)return null;
-  var subjMap={};
-  Object.keys(userPerm).forEach(function(lop){
-    userPerm[lop].forEach(function(key){
-      if(!subjMap[key])subjMap[key]=[];
-      if(subjMap[key].indexOf(lop)<0)subjMap[key].push(lop);
-    });
-  });
-  return subjMap;
-}
-
-function _subjKeyToName(key){
-  var map={
-    'mon_Toán':'Toán','mon_Tiếng_việt':'Tiếng Việt','mon_Đạo_đức':'Đạo đức',
-    'mon_Tự_nhiên_và_xã_hội':'TN&XH','mon_Ngoại_ngữ':'Ngoại ngữ',
-    'mon_TH-CN_Tin_học':'Tin học','mon_Nghệ_thuật_Âm_nhạc':'Âm nhạc',
-    'mon_Nghệ_thuật_Mĩ_thuật':'Mĩ thuật','mon_Hoạt_động_trải_nghiệm':'HĐTN',
-    'mon_Giáo_dục_thể_chất':'Thể chất','mon_Khoa_học':'Khoa học',
-    'mon_Lịch_sử_và_Địa_lí':'LS&ĐL','mon_TH-CN_Công_nghệ':'Công nghệ',
-    'mon_Tiếng_dân_tộc':'T.dân tộc',
-    'nl_Tự_chủ_và_tự_học':'Tự chủ<br>tự học','nl_Giao_tiếp_và_hợp_tác':'Giao tiếp<br>hợp tác',
-    'nl_Giải_quyết_vấn_đề_và_sáng_tạo':'GQVĐ<br>sáng tạo','nl_Ngôn_ngữ':'Ngôn<br>ngữ',
-    'nl_Tính_toán':'Tính<br>toán','nl_Khoa_học':'Khoa<br>học','nl_Công_nghệ':'Công<br>nghệ','nl_Tin_học':'Tin<br>học',
-    'nl_Thẩm_mĩ':'Thẩm<br>mĩ','nl_Thể_chất':'Thể<br>chất',
-    'pc_Yêu_nước':'Yêu<br>nước','pc_Nhân_ái':'Nhân<br>ái',
-    'pc_Chăm_chỉ':'Chăm<br>chỉ','pc_Trung_thực':'Trung<br>thực','pc_Trách_nhiệm':'Trách<br>nhiệm'
-  };
-  return map[key]||key;
-}
-
-function _subjHasDiem(key,khoi){
-  var sj=SUBJ[String(khoi)]||SUBJ['1'];
-  for(var i=0;i<sj.length;i++){
-    if(sj[i][1]===key){
-      if(!sj[i][2]||!sj[i][3])return false;
-      if(curPeriod!=='cn'&&curPeriod!=='ck1'){
-        if(khoi<=3)return false;
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-function _subjDiemKey(monKey,khoi){
-  var sj=SUBJ[String(khoi)]||SUBJ['1'];
-  for(var i=0;i<sj.length;i++){
-    if(sj[i][1]===monKey&&sj[i][2]&&sj[i][3])return sj[i][2];
-  }
-  return null;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MẪU NHẬP THEO PHÂN CÔNG — THIẾT KẾ CHUẨN CÓ KEY ROW
-// ═══════════════════════════════════════════════════════════════
 function dlMauGV(){
   var subjMap=_getGVSubjects();
   if(!subjMap){toast('⚠️ Không có phân công giảng dạy','warn');return;}
@@ -2204,158 +2110,116 @@ function dlMauGV(){
   var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
   var isGVCN=!!(CU&&CU.lop&&CU.lop.trim());
   var isCN=(curPeriod==='cn');
-
-  // ═══ GOM CỘT MÔN HỌC ═══
-  var subjKeys=Object.keys(subjMap).filter(function(k){return k.indexOf('mon_')===0;});
-  var monCols=[]; // [{name, key, diemKey?, hasDiem, colSpan}]
-  var monKeyList=[]; // flat keys for key row
   var maxKhoi=Math.max.apply(null,allLops.map(function(l){return parseInt(l)||1;}));
+
+  // ═══ GOM CỘT ═══
+  var subjKeys=Object.keys(subjMap).filter(function(k){return k.indexOf('mon_')===0;});
+  var monCols=[];
+  var allKeys=[];  // flat keys for key row
 
   subjKeys.forEach(function(skey){
     var name=_subjKeyToName(skey);
     var anyDiem=allLops.some(function(lop){return _subjHasDiem(skey,parseInt(lop));});
     if(anyDiem){
-      var dk=skey.replace('mon_','');
-      monCols.push({name:name,key:skey,diemKey:'diem_'+dk,hasDiem:true,colSpan:2});
-      monKeyList.push(skey);monKeyList.push('diem_'+dk);
+      monCols.push({name:name,key:skey,dk:'diem_'+skey.replace('mon_',''),hd:true});
+      allKeys.push(skey);allKeys.push('diem_'+skey.replace('mon_',''));
     }else{
-      monCols.push({name:name,key:skey,diemKey:null,hasDiem:false,colSpan:1});
-      monKeyList.push(skey);
+      monCols.push({name:name,key:skey,dk:null,hd:false});
+      allKeys.push(skey);
     }
   });
-  var totalMonCols=monCols.reduce(function(s,m){return s+m.colSpan;},0);
 
-  // ═══ GOM NL + PC ═══
-  var nlKeys=[], nlNames=[], pcKeys=[], pcNames=[];
+  var nlKeys=[], pcKeys=[];
   if(isGVCN){
-    // GVCN: thêm tất cả NL (theo khối) + PC
     var allNL=_getAllNL(maxKhoi);
-    allNL.forEach(function(nl){nlKeys.push(nl[1]);nlNames.push(_subjKeyToName(nl[1]));});
-    PC.forEach(function(pc){pcKeys.push(pc[1]);pcNames.push(_subjKeyToName(pc[1]));});
+    allNL.forEach(function(nl){nlKeys.push(nl[1]);});
+    PC.forEach(function(pc){pcKeys.push(pc[1]);});
   }
-  // NL/PC từ phân công (nếu có)
   Object.keys(subjMap).forEach(function(k){
-    if(k.indexOf('nl_')===0&&nlKeys.indexOf(k)<0){nlKeys.push(k);nlNames.push(_subjKeyToName(k));}
-    if(k.indexOf('pc_')===0&&pcKeys.indexOf(k)<0){pcKeys.push(k);pcNames.push(_subjKeyToName(k));}
+    if(k.indexOf('nl_')===0&&nlKeys.indexOf(k)<0) nlKeys.push(k);
+    if(k.indexOf('pc_')===0&&pcKeys.indexOf(k)<0) pcKeys.push(k);
   });
-
   var tailKeys=isCN&&isGVCN?['len_lop']:[];
-  var tailNames=isCN&&isGVCN?['Lên<br>lớp']:[];
 
-  // ═══ STYLES ═══
-  var bdr='border:0.5pt solid #aaa;';
-  var ctr='text-align:center;vertical-align:middle;';
-  var bold='font-weight:bold;';
-  var wrap='word-wrap:break-word;';
-  var sInfo='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
-  var sInfoDk='background:#2e7d32;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sMon='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sMonDk='background:#1565c0;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sNL='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sNLDk='background:#e65100;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sPC='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sPCDk='background:#6a1b9a;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sTail='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sData=bdr+ctr+'font-size:10pt;';
-  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
-  var sHide='font-size:1pt;color:#fff;border:none;height:1px;';
+  // ═══ BUILD HEADER ROWS ═══
+  var r1=['Mẫu nhập kết quả — '+(CU.hoten||CU.username)+' — '+periodName];
+  var totalCols=4; // STT, Lớp, Mã HS, Họ tên
+  monCols.forEach(function(m){totalCols+=m.hd?2:1;});
+  totalCols+=nlKeys.length+pcKeys.length+tailKeys.length;
+  for(var i=1;i<totalCols;i++) r1.push('');
 
-  // ═══ BUILD HTML ═══
-  var h='';
-  var infoCols=['STT','Lớp','Mã học<br>sinh','Họ tên'];
-  var numInfoCols=infoCols.length;
+  // Row 2: Group headers
+  var r2=['STT','Lớp','Mã học sinh','Họ tên'];
+  var merges=[{s:{r:0,c:0},e:{r:0,c:totalCols-1}}]; // Title merge
 
-  // ── TITLE ROW ──
-  var totalCols=numInfoCols+totalMonCols+nlKeys.length+pcKeys.length+tailKeys.length;
-  h+='<tr height="28"><td colspan="'+totalCols+'" style="'+sInfoDk+'font-size:10pt;text-align:left;padding-left:10px">';
-  h+='📋 Mẫu nhập kết quả — '+(CU.hoten||CU.username)+' — '+periodName+'</td></tr>';
-
-  // ── ROW 1: Group headers ──
-  h+='<tr height="28">';
-  for(var i=0;i<numInfoCols;i++) h+='<td rowspan="2" style="'+sInfo+'">'+infoCols[i]+'</td>';
-  if(totalMonCols>0) h+='<td colspan="'+totalMonCols+'" style="'+sMonDk+'">Môn học và hoạt động giáo dục</td>';
-  if(nlKeys.length>0) h+='<td colspan="'+nlKeys.length+'" style="'+sNLDk+'">Năng lực</td>';
-  if(pcKeys.length>0) h+='<td colspan="'+pcKeys.length+'" style="'+sPCDk+'">Phẩm chất</td>';
-  tailNames.forEach(function(t){h+='<td rowspan="2" style="'+sTail+'">'+t+'</td>';});
-  h+='</tr>';
-
-  // ── ROW 2: Subject names ──
-  h+='<tr height="40">';
+  var ci2=4;
+  var monStart2=ci2;
   monCols.forEach(function(m){
-    if(m.hasDiem){
-      h+='<td style="'+sMon+'">'+m.name+'<br><span style="font-size:7pt;color:#555">Mức đạt</span></td>';
-      h+='<td style="'+sMon+'">'+m.name+'<br><span style="font-size:7pt;color:#555">Điểm</span></td>';
-    }else{
-      h+='<td style="'+sMon+'">'+m.name+'</td>';
-    }
+    if(m.hd){r2.push(m.name+' (ĐG)');r2.push(m.name+' (Điểm)');ci2+=2;}
+    else{r2.push(m.name);ci2++;}
   });
-  nlNames.forEach(function(n){h+='<td style="'+sNL+'">'+n+'</td>';});
-  pcNames.forEach(function(n){h+='<td style="'+sPC+'">'+n+'</td>';});
-  h+='</tr>';
+  var monEnd2=ci2-1;
+  nlKeys.forEach(function(k){r2.push(_subjKeyToName(k));ci2++;});
+  pcKeys.forEach(function(k){r2.push(_subjKeyToName(k));ci2++;});
+  tailKeys.forEach(function(){r2.push('Lên lớp');ci2++;});
 
-  // ── ROW 3: KEY ROW (ẩn — parser đọc) ──
-  h+='<tr height="1">';
-  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td>';
-  monKeyList.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  nlKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  pcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  h+='</tr>';
+  // Row 3: Key row
+  var r3=['__KEYS__','_lop_','_ma_','_ten_'];
+  monCols.forEach(function(m){
+    r3.push(m.key);
+    if(m.hd) r3.push(m.dk);
+  });
+  nlKeys.forEach(function(k){r3.push(k);});
+  pcKeys.forEach(function(k){r3.push(k);});
+  tailKeys.forEach(function(k){r3.push(k);});
 
-  // ── DATA ROWS ──
-  allHS.forEach(function(s,i){
+  // ═══ DATA ROWS ═══
+  var dataRows=allHS.map(function(s,i){
     var g=grades[s.ma]||{};
-    h+='<tr height="26">';
-    h+='<td style="'+sData+'">'+(i+1)+'</td>';
-    h+='<td style="'+sData+'">'+s.lop+'</td>';
-    h+='<td style="'+sData+'">'+s.ma+'</td>';
-    h+='<td style="'+sName+'">'+s.ten+'</td>';
-    // Môn
+    var row=[i+1,s.lop,String(s.ma),s.ten];
     monCols.forEach(function(m){
-      if(m.hasDiem){
-        var mv=g[m.key]||'';
-        h+='<td style="'+sData+'">'+(mv?_storeToDisplay(mv,'mon'):'')+'</td>';
+      var mv=g[m.key]||'';
+      row.push(mv?_storeToDisplay(mv,'mon'):'');
+      if(m.hd){
         var dk=_subjDiemKey(m.key,s.khoi);
-        h+='<td style="'+sData+'">'+(dk&&g[dk]!==undefined?g[dk]:'')+'</td>';
-      }else{
-        var mv=g[m.key]||'';
-        h+='<td style="'+sData+'">'+(mv?_storeToDisplay(mv,'mon'):'')+'</td>';
+        row.push(dk&&g[dk]!==undefined?g[dk]:'');
       }
     });
-    // NL
-    nlKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    // PC
-    pcKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    // Tail
-    tailKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v||'')+'</td>';});
-    h+='</tr>';
+    nlKeys.forEach(function(k){var v=g[k]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
+    pcKeys.forEach(function(k){var v=g[k]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
+    tailKeys.forEach(function(k){row.push(g[k]||'');});
+    return row;
   });
 
-  // ═══ COL WIDTHS ═══
-  var colW='<col width="35"><col width="40"><col width="90"><col width="170">';
-  monCols.forEach(function(m){
-    if(m.hasDiem){colW+='<col width="48"><col width="40">';}
-    else{colW+='<col width="50">';}
-  });
-  nlKeys.forEach(function(){colW+='<col width="55">';});
-  pcKeys.forEach(function(){colW+='<col width="55">';});
-  tailKeys.forEach(function(){colW+='<col width="55">';});
+  // ═══ BUILD XLSX ═══
+  var aoa=[r1,r2,r3].concat(dataRows);
+  var ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges']=merges;
 
-  // ═══ XUẤT FILE ═══
-  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
-    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
-    +'<x:Name>KetQua</x:Name>'
-    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal><x:TopRowBottomPane>4</x:TopRowBottomPane>'
-    +'<x:SplitVertical>4</x:SplitVertical><x:LeftColumnRightPane>4</x:LeftColumnRightPane></x:WorksheetOptions>'
-    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
-    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
-    +'<body><table>'+colW+h+'</table></body></html>';
+  // Col widths
+  var cols=[{wch:5},{wch:6},{wch:14},{wch:24}];
+  for(var w=4;w<totalCols;w++) cols.push({wch:10});
+  ws['!cols']=cols;
 
-  var blob=new Blob([html],{type:'application/vnd.ms-excel'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='NhapDiem_'+(CU.hoten||CU.username).replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
-  a.click();URL.revokeObjectURL(a.href);
+  // Hướng dẫn sheet
+  var hd=[
+    ['HƯỚNG DẪN NHẬP KẾT QUẢ — '+(CU.hoten||CU.username)],[''],
+    ['Phân công: '+(CU.phan_cong||'')],
+    ['Lớp: '+allLops.join(', ')],
+    ['Tổng: '+allHS.length+' HS'],[''],
+    ['CÁCH NHẬP:'],
+    ['- Cột ĐG (đánh giá): T = Hoàn thành tốt, H = Hoàn thành, C = Chưa hoàn thành'],
+    ['- Cột Điểm: số 0 đến 10'],
+    ['- NL/PC: T = Tốt, Đ = Đạt, C = Chưa đạt'],[''],
+    ['KHÔNG sửa STT, Lớp, Mã HS. Có thể để trống ô chưa có KQ.']
+  ];
+  var ws2=XLSX.utils.aoa_to_sheet(hd);
+  ws2['!cols']=[{wch:60}];
+
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'KetQua');
+  XLSX.utils.book_append_sheet(wb,ws2,'HuongDan');
+  XLSX.writeFile(wb,'NhapDiem_'+(CU.hoten||CU.username).replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('📥 Mẫu '+periodName+': '+allHS.length+' HS ('+allLops.join(', ')+')','ok');
 }
 
