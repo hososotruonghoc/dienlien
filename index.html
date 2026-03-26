@@ -1918,9 +1918,20 @@ function _parseDiemExcel(raw,lop){
   // ═══ TÌM KEY ROW (ưu tiên) HOẶC HEADER ROW ═══
   var keyRow=-1, headerRow=-1, dataStart=-1;
   for(var ri=0;ri<Math.min(raw.length,15);ri++){
-    var first=String((raw[ri]||[])[0]||'').trim();
-    if(first==='__KEYS__'){keyRow=ri;dataStart=ri+1;break;}
-    if(first.toLowerCase()==='stt'&&headerRow<0) headerRow=ri;
+    var rowCells=(raw[ri]||[]);
+    for(var ci=0;ci<rowCells.length;ci++){
+      var cv=String(rowCells[ci]||'').trim();
+      if(cv==='__KEYS__'){keyRow=ri;dataStart=ri+1;break;}
+    }
+    if(keyRow>=0) break;
+    // Tìm header row: dòng có STT hoặc Mã HS hoặc Họ tên
+    if(headerRow<0){
+      var cellsA=rowCells.map(function(c){return String(c||'').trim().toLowerCase();});
+      var hasStt=cellsA.some(function(c){return c==='stt';});
+      var hasMa=cellsA.some(function(c){return c==='mã học sinh'||c==='ma hoc sinh'||c==='mã hs';});
+      var hasHoTen=cellsA.some(function(c){return c==='họ tên'||c==='ho ten'||c==='họ và tên';});
+      if(hasStt||(hasMa&&hasHoTen)) headerRow=ri;
+    }
   }
 
   // ═══ PHƯƠNG PHÁP 1: KEY ROW (chính xác 100%) ═══
