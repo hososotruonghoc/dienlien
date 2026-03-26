@@ -946,6 +946,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
     <div class="mft-l" id="hbStat"></div>
     <div class="mft-r">
       <button class="btn bout" onclick="cm('hbBg')">Đóng</button>
+      <button class="btn bout" onclick="hbExportWordOne()" style="color:var(--violet);border-color:var(--violet)">📄 Xuất Word</button>
       <button class="btn bpur" onclick="hbAiOne()">🤖 AI Nhận xét</button>
       <button class="btn bp" onclick="hbSaveOne()" style="background:var(--violet)">💾 Lưu</button>
     </div>
@@ -3091,67 +3092,196 @@ function hbSaveOne(){
   }).catch(function(e){loader();toast('⚠️ Lưu local OK','warn');cm('hbBg');hbFil();});
 }
 
-function hbAiOne(){
-  if(hbIdx===null)return;var s=SB[hbIdx],g=grades[s.ma]||{},kq=cTT(s.ma,s.khoi);
-  if(!GAS){toast('⚠️ Cần kết nối GAS','warn');return;}
-  var k=String(s.khoi),sj=SUBJ[k]||SUBJ['1'];
-  var monInfo=sj.map(function(mn){var mv=g[mn[1]]||'',dv=mn[2]?g[mn[2]]||'':'';return mn[0]+' ('+mv+(dv?', điểm '+dv:'')+')';}).join('; ');
-  var pcInfo=PC.map(function(pc){return pc[0]+': '+(g[pc[1]]||'?');}).join(', ');
-  var nlInfo=NL.map(function(nl){return nl[0]+': '+(g[nl[1]]||'?');}).join(', ');
-  var monKeys=sj.map(function(mn){return'"nx_'+mn[1]+'": "nhận xét 1 câu cho '+mn[0]+'"';}).join(',');
 
-  var prompt='Bạn là giáo viên tiểu học Việt Nam. Viết nhận xét học bạ cuối năm cho HS:\n'
-    +'- Họ tên: '+s.ten+', Lớp: '+s.lop+', GT: '+s.gt+'\n'
-    +'- KQGD: '+kqText(kq)+'\n'
-    +'- Môn học: '+monInfo+'\n'
-    +'- Phẩm chất: '+pcInfo+'\n'
-    +'- Năng lực: '+nlInfo+'\n\n'
-    +'Trả về ĐÚNG JSON (không markdown, không giải thích):\n{'+monKeys+','
-    +'"nx_pham_chat": "2-3 câu về phẩm chất",'
-    +'"nx_nl_chung": "2-3 câu về năng lực chung",'
-    +'"nx_nl_dacthu": "2-3 câu về năng lực đặc thù"'
-    +'}\nMỗi nhận xét 1-2 câu ngắn gọn tích cực cụ thể, dùng "em". CHỈ JSON.';
+// ═══════════════════════════════════════════════════════════════
+// SINH NHẬN XÉT HỌC BẠ TỰ ĐỘNG — CHẠY TRỰC TIẾP (KHÔNG CẦN AI API)
+// Dựa trên kết quả đánh giá + ngân hàng nhận xét chuẩn TT27
+// ═══════════════════════════════════════════════════════════════
 
-  loader('🤖 AI đang viết nhận xét...');
-  gasPost({action:'aiChat',prompt:prompt}).then(function(r){
-    loader();
-    if(!r.ok||!r.text){toast('❌ '+(r.error||'Lỗi AI'),'err');return;}
-    try{
-      var txt=r.text.replace(/```json|```/g,'').trim();
-      var data=JSON.parse(txt);
-      sj.forEach(function(mn){var el=T('nx_'+mn[1]);if(el&&data['nx_'+mn[1]])el.value=data['nx_'+mn[1]];});
-      if(data.nx_pham_chat&&T('hb_nx_pham_chat'))T('hb_nx_pham_chat').value=data.nx_pham_chat;
-      if(data.nx_nl_chung&&T('hb_nx_nl_chung'))T('hb_nx_nl_chung').value=data.nx_nl_chung;
-      if(data.nx_nl_dacthu&&T('hb_nx_nl_dacthu'))T('hb_nx_nl_dacthu').value=data.nx_nl_dacthu;
-      toast('🤖 AI đã tạo nhận xét!','ok');
-    }catch(e){toast('⚠️ AI format lỗi, thử lại','warn');console.log('AI:',r.text);}
-  }).catch(function(e){loader();toast('❌ '+e.message,'err');});
+var _NX_MON = {
+  HTT: {
+    'mon_Toán': ['Em tính toán nhanh, chính xác, tích cực giơ tay phát biểu xây dựng bài.','Em nắm vững kiến thức toán học, vận dụng tốt vào giải toán.','Em có tư duy logic tốt, giải toán nhanh và chính xác.','Em tích cực trong học tập môn Toán, hoàn thành xuất sắc các bài kiểm tra.'],
+    'mon_Tiếng_việt': ['Em đọc lưu loát, viết chữ đẹp, trình bày sạch sẽ.','Em học bài chăm chỉ, tích cực phát biểu ý kiến xây dựng bài.','Em có vốn từ phong phú, diễn đạt mạch lạc, viết văn hay.','Em đọc diễn cảm, hiểu nội dung bài đọc tốt, viết đúng chính tả.'],
+    'mon_Đạo_đức': ['Biết áp dụng tốt các hành vi đạo đức đã học vào thực tiễn.','Em có ý thức tốt trong rèn luyện đạo đức, biết yêu thương giúp đỡ bạn bè.','Em thực hiện tốt các chuẩn mực đạo đức, là tấm gương cho các bạn.'],
+    'mon_Tự_nhiên_và_xã_hội': ['Em nắm vững kiến thức về tự nhiên và xã hội, biết liên hệ thực tế.','Em tích cực tìm hiểu về thế giới xung quanh, có nhiều câu trả lời hay.','Em hoàn thành tốt các nhiệm vụ học tập môn TN&XH.'],
+    'mon_Ngoại_ngữ': ['Hoàn thành tốt kiến thức, kỹ năng môn học. Kỹ năng nói tốt, có vốn từ vựng rộng.','Em phát âm chuẩn, tích cực giao tiếp bằng tiếng Anh.','Em nắm vững từ vựng và ngữ pháp, đọc hiểu tốt.'],
+    'mon_TH-CN_Tin_học': ['Thành thạo các kỹ năng thực hành trên máy tính.','Em sử dụng thành thạo phần mềm học tập, hoàn thành tốt bài thực hành.','Em có kỹ năng tin học tốt, tích cực ứng dụng CNTT vào học tập.'],
+    'mon_Khoa_học': ['Em học tập tốt, nắm vững kiến thức khoa học.','Em tích cực tìm hiểu, khám phá kiến thức khoa học. Biết vận dụng vào thực tế.','Em nắm chắc kiến thức khoa học, có nhiều câu hỏi hay trong giờ học.'],
+    'mon_Lịch_sử_và_Địa_lí': ['Em nắm chắc kiến thức về lịch sử, địa lí.','Em hiểu biết tốt về các sự kiện lịch sử và đặc điểm địa lí.','Em tích cực tìm hiểu lịch sử dân tộc và địa lí Việt Nam.'],
+    'mon_TH-CN_Công_nghệ': ['Em thực hiện tốt các yêu cầu cần đạt, có ý thức giữ gìn sản phẩm công nghệ.','Em nắm được kiến thức công nghệ, biết vận dụng vào thực tiễn.'],
+    'mon_Nghệ_thuật_Âm_nhạc': ['Thuộc lời, hát đúng giai điệu lời ca, cố gắng hát rõ lời.','Em hát hay, đúng nhạc, tích cực tham gia hoạt động âm nhạc.','Em có năng khiếu âm nhạc, biết biểu diễn tự tin.'],
+    'mon_Nghệ_thuật_Mĩ_thuật': ['Em nắm được cách thực hành và biết vận dụng để tạo sản phẩm.','Em vẽ đẹp, sáng tạo, biết phối màu hài hòa.','Em có óc thẩm mĩ tốt, thể hiện nét vẽ sinh động.'],
+    'mon_Giáo_dục_thể_chất': ['Hoàn thành tốt các nội dung bài học. Tập các động tác đẹp, rõ ràng.','Em tích cực rèn luyện thể dục thể thao, có sức khỏe tốt.','Em thực hiện tốt các bài tập thể chất, đúng kỹ thuật.'],
+    'mon_Hoạt_động_trải_nghiệm': ['Em nắm vững kiến thức, biết chỉ ra được hình ảnh thân thiện, vui vẻ của bản thân.','Em tích cực tham gia các hoạt động trải nghiệm, biết chia sẻ và hợp tác.','Em mạnh dạn, tự tin khi tham gia hoạt động trải nghiệm.']
+  },
+  HT: {
+    'mon_Toán': ['Em hoàn thành kiến thức môn Toán, cần rèn thêm kỹ năng tính toán.','Em nắm được kiến thức cơ bản, cần cố gắng thêm trong giải toán.'],
+    'mon_Tiếng_việt': ['Em đọc được bài, cần rèn thêm kỹ năng viết và trình bày.','Em hoàn thành bài tập, cần chú ý hơn về chính tả và diễn đạt.'],
+    'mon_Đạo_đức': ['Em thực hiện được các chuẩn mực đạo đức cơ bản.','Em ngoan ngoãn, biết nghe lời thầy cô.'],
+    'mon_Tự_nhiên_và_xã_hội': ['Em nắm được kiến thức cơ bản về tự nhiên và xã hội.','Em hoàn thành các bài học về TN&XH.'],
+    'mon_Ngoại_ngữ': ['Em hoàn thành kiến thức cơ bản môn tiếng Anh, cần rèn thêm kỹ năng nghe nói.','Em nắm được từ vựng cơ bản, cần cố gắng thêm.'],
+    'mon_TH-CN_Tin_học': ['Em thực hiện được các thao tác cơ bản trên máy tính.','Em hoàn thành các bài thực hành tin học.'],
+    'mon_Khoa_học': ['Em nắm được kiến thức khoa học cơ bản.','Em hoàn thành bài học môn Khoa học.'],
+    'mon_Lịch_sử_và_Địa_lí': ['Em nắm được kiến thức cơ bản về lịch sử, địa lí.','Em hoàn thành các bài học LS&ĐL.'],
+    'mon_TH-CN_Công_nghệ': ['Em hoàn thành các yêu cầu cơ bản môn Công nghệ.','Em nắm được kiến thức cơ bản về công nghệ.'],
+    'mon_Nghệ_thuật_Âm_nhạc': ['Em hát được bài, cần rèn thêm về giai điệu.','Em hoàn thành các bài học âm nhạc.'],
+    'mon_Nghệ_thuật_Mĩ_thuật': ['Em vẽ được theo yêu cầu, cần sáng tạo thêm.','Em hoàn thành bài tập mĩ thuật.'],
+    'mon_Giáo_dục_thể_chất': ['Em hoàn thành các bài tập thể chất cơ bản.','Em tham gia đầy đủ các giờ thể dục.'],
+    'mon_Hoạt_động_trải_nghiệm': ['Em tham gia các hoạt động trải nghiệm, cần mạnh dạn hơn.','Em hoàn thành các hoạt động trải nghiệm.']
+  },
+  CHT: {
+    _default: ['Em cần cố gắng hơn trong học tập.','Em chưa hoàn thành yêu cầu, cần được hỗ trợ thêm.']
+  }
+};
+
+var _NX_PC = {
+  T: ['Em chăm học, chăm làm, tích cực tham gia hoạt động; Tự tin trao đổi ý kiến trước tập thể; Đi học đều, đúng giờ; Trung thực trong học tập; Tự tin khi phát biểu.',
+      'Em ngoan ngoãn, lễ phép với thầy cô; Yêu thương giúp đỡ bạn bè; Chăm chỉ học tập; Trung thực thật thà; Có tinh thần trách nhiệm cao.',
+      'Em có phẩm chất tốt; Biết yêu quê hương đất nước; Nhân ái, biết giúp đỡ người khác; Chăm chỉ, siêng năng; Luôn trung thực; Có ý thức trách nhiệm.'],
+  'Đ': ['Em ngoan, biết nghe lời thầy cô; Cần tích cực hơn trong học tập và rèn luyện.',
+        'Em thực hiện được các phẩm chất cơ bản; Cần phát huy thêm tinh thần tự giác.'],
+  CCG: ['Em cần rèn luyện thêm các phẩm chất; Thầy cô và gia đình cần phối hợp hỗ trợ em.']
+};
+
+var _NX_NLC = {
+  T: ['Em chấp hành tốt nội quy lớp học; Mạnh dạn trong giao tiếp; Khả năng tự thực hiện nhiệm vụ học tập tốt.',
+      'Em tự giác trong học tập; Giao tiếp mạnh dạn, tự tin; Biết hợp tác với bạn bè; Có khả năng giải quyết vấn đề tốt.',
+      'Em chủ động trong học tập; Biết lắng nghe và chia sẻ; Sáng tạo trong giải quyết vấn đề.'],
+  'Đ': ['Em thực hiện được các năng lực chung cơ bản; Cần mạnh dạn hơn trong giao tiếp.',
+        'Em tự học được ở mức cơ bản; Cần phát huy thêm khả năng hợp tác.'],
+  CCG: ['Em cần rèn luyện thêm các năng lực chung; Cần sự hỗ trợ của thầy cô.']
+};
+
+var _NX_NLD = {
+  T: ['Em mạnh dạn khi giao tiếp; Vận dụng kiến thức tốt, tính toán nhanh; Thể hiện đẹp nét vẽ trong tranh; Có ý thức bảo vệ và giữ gìn sức khoẻ tự giác tập luyện thể dục, thể thao.',
+      'Em có năng lực ngôn ngữ tốt; Tính toán nhanh chính xác; Yêu thích khoa học; Có óc thẩm mĩ; Tích cực rèn luyện thể chất.',
+      'Em diễn đạt mạch lạc; Tư duy toán học tốt; Khám phá khoa học tích cực; Sáng tạo trong thẩm mĩ; Sức khỏe tốt.'],
+  'Đ': ['Em thực hiện được các năng lực đặc thù ở mức cơ bản; Cần phát huy thêm.',
+        'Em có năng lực cơ bản; Cần cố gắng phát triển thêm các kỹ năng.'],
+  CCG: ['Em cần được hỗ trợ phát triển các năng lực đặc thù.']
+};
+
+function _randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function _genNxMon(monKey, mucDat){
+  var level = mucDat==='HTT'?'HTT':mucDat==='HT'?'HT':'CHT';
+  var bank = _NX_MON[level];
+  if(!bank) bank = _NX_MON.CHT;
+  var arr = bank[monKey] || bank._default || ['Em hoàn thành yêu cầu môn học.'];
+  return _randomPick(arr);
 }
 
+function _genNxPC(pcList, grades){
+  // Xác định mức chung: nếu tất cả T → T, có CCG → CCG, còn lại → Đ
+  var hasC = pcList.some(function(pc){ return grades[pc[1]]==='CCG'; });
+  var allT = pcList.every(function(pc){ return grades[pc[1]]==='T'; });
+  var level = hasC?'CCG':allT?'T':'Đ';
+  return _randomPick(_NX_PC[level]||_NX_PC['Đ']);
+}
+
+function _genNxNLC(nlList, grades){
+  var hasC = nlList.some(function(nl){ return grades[nl[1]]==='CCG'; });
+  var allT = nlList.every(function(nl){ return grades[nl[1]]==='T'; });
+  var level = hasC?'CCG':allT?'T':'Đ';
+  return _randomPick(_NX_NLC[level]||_NX_NLC['Đ']);
+}
+
+function _genNxNLD(nlList, grades){
+  var hasC = nlList.some(function(nl){ return grades[nl[1]]==='CCG'; });
+  var allT = nlList.every(function(nl){ return grades[nl[1]]==='T'; });
+  var level = hasC?'CCG':allT?'T':'Đ';
+  return _randomPick(_NX_NLD[level]||_NX_NLD['Đ']);
+}
+
+// ═══ SINH NHẬN XÉT CHO 1 HS ═══
+function _generateNhanXet(s){
+  var g=grades[s.ma]||{}, k=parseInt(s.khoi);
+  var sj=(SUBJ[String(k)]||SUBJ['1']).filter(function(x){return x[1]!=='mon_Tiếng_dân_tộc';});
+  var allNL=_getAllNL(k);
+  var nlChung=allNL.slice(0,3);
+  var nlDacThu=allNL.slice(3);
+  var result={};
+
+  // Nhận xét từng môn
+  sj.forEach(function(mn){
+    var mv=g[mn[1]]||'';
+    if(mv) result['nx_'+mn[1]]=_genNxMon(mn[1], mv);
+  });
+
+  // Nhận xét phẩm chất
+  result.nx_pham_chat=_genNxPC(PC, g);
+
+  // Nhận xét NL chung
+  result.nx_nl_chung=_genNxNLC(nlChung, g);
+
+  // Nhận xét NL đặc thù
+  result.nx_nl_dacthu=_genNxNLD(nlDacThu, g);
+
+  return result;
+}
+
+// ═══ AI NHẬN XÉT — 1 HS (trong modal) ═══
+function hbAiOne(){
+  if(hbIdx===null)return;
+  var s=SB[hbIdx];if(!s)return;
+  var g=grades[s.ma]||{};
+
+  // Kiểm tra đã có đánh giá chưa
+  var sj=(SUBJ[String(s.khoi)]||SUBJ['1']).filter(function(x){return x[1]!=='mon_Tiếng_dân_tộc';});
+  var hasMon=sj.some(function(mn){return g[mn[1]];});
+  if(!hasMon){toast('⚠️ Chưa có kết quả đánh giá để tạo nhận xét','warn');return;}
+
+  loader('🤖 Đang tạo nhận xét...');
+  setTimeout(function(){
+    var data=_generateNhanXet(s);
+
+    // Điền vào form
+    sj.forEach(function(mn){
+      var el=T('nx_'+mn[1]);
+      if(el&&data['nx_'+mn[1]]) el.value=data['nx_'+mn[1]];
+    });
+    if(data.nx_pham_chat&&T('hb_nx_pham_chat')) T('hb_nx_pham_chat').value=data.nx_pham_chat;
+    if(data.nx_nl_chung&&T('hb_nx_nl_chung')) T('hb_nx_nl_chung').value=data.nx_nl_chung;
+    if(data.nx_nl_dacthu&&T('hb_nx_nl_dacthu')) T('hb_nx_nl_dacthu').value=data.nx_nl_dacthu;
+
+    loader();
+    toast('🤖 Đã tạo nhận xét cho '+s.ten+'!','ok');
+  }, 300);
+}
+
+// ═══ AI NHẬN XÉT — CẢ LỚP ═══
 function hbAiBatch(){
   var lop=T('hb-lop').value;if(!lop){toast('⚠️ Chọn lớp trước','warn');return;}
-  if(!GAS){toast('⚠️ Cần kết nối','warn');return;}
-  var list=hbFiltered.filter(function(s){var nx=nhanXet[s.ma]||{};return!nx.nx_pham_chat;});
-  if(!list.length){toast('ℹ️ Tất cả đã có nhận xét','ok');return;}
-  if(!confirm('AI sẽ tạo nhận xét cho '+list.length+' HS. Mỗi HS ~3-5s. Tiếp tục?'))return;
-  loader('🤖 AI đang xử lý...');var i=0,ok=0;
-  function next(){
-    if(i>=list.length){loader();toast('🤖 Xong! '+ok+'/'+list.length+' HS','ok');try{localStorage.setItem('_nhanxet',JSON.stringify(nhanXet));}catch(e){}hbFil();return;}
-    var s=list[i];T('ldr-t').textContent='🤖 '+(i+1)+'/'+list.length+' · '+s.ten;
-    var g=grades[s.ma]||{},kq=cTT(s.ma,s.khoi),k=String(s.khoi),sj=SUBJ[k]||SUBJ['1'];
-    var monInfo=sj.map(function(mn){var mv=g[mn[1]]||'',dv=mn[2]?g[mn[2]]||'':'';return mn[0]+'('+mv+(dv?','+dv:'')+')';}).join(';');
-    var monKeys=sj.map(function(mn){return'"nx_'+mn[1]+'":"1 câu"';}).join(',');
-    var prompt='GV tiểu học VN. Nhận xét học bạ. HS: '+s.ten+', Lớp '+s.lop+', '+s.gt+', KQGD: '+kqText(kq)+'. Môn: '+monInfo+'. JSON: {'+monKeys+',"nx_pham_chat":"2 câu","nx_nl_chung":"2 câu","nx_nl_dacthu":"2 câu"}. Dùng "em", tích cực. CHỈ JSON.';
-    gasPost({action:'aiChat',prompt:prompt}).then(function(r){
-      if(r.ok&&r.text){try{
-        var data=JSON.parse(r.text.replace(/```json|```/g,'').trim());
-        var nx=nhanXet[s.ma]||{};Object.keys(data).forEach(function(dk){nx[dk]=data[dk];});
-        nx.updated_at=new Date().toLocaleString('vi-VN');nx.updated_by='AI';nhanXet[s.ma]=nx;ok++;
-      }catch(e){}}
-      i++;setTimeout(next,800);
-    }).catch(function(){i++;setTimeout(next,800);});
-  }next();
+  var list=hbFiltered.filter(function(s){
+    var nx=nhanXet[s.ma]||{};
+    var g=grades[s.ma]||{};
+    // Chỉ tạo cho HS chưa có nhận xét VÀ đã có đánh giá
+    return !nx.nx_pham_chat && Object.keys(g).length>0;
+  });
+  if(!list.length){toast('ℹ️ Tất cả đã có nhận xét hoặc chưa có đánh giá','ok');return;}
+  if(!confirm('Tạo nhận xét tự động cho '+list.length+' HS?\n\nHS đã có nhận xét sẽ được giữ nguyên.'))return;
+
+  loader('🤖 Đang tạo nhận xét...');
+  var ok=0;
+  setTimeout(function(){
+    list.forEach(function(s){
+      var data=_generateNhanXet(s);
+      var nx=nhanXet[s.ma]||{};
+      Object.keys(data).forEach(function(dk){
+        if(!nx[dk]) nx[dk]=data[dk]; // Chỉ điền nếu chưa có
+      });
+      nx.updated_at=new Date().toLocaleString('vi-VN');
+      nx.updated_by='AI';
+      nhanXet[s.ma]=nx;
+      ok++;
+    });
+    try{localStorage.setItem('_nhanxet',JSON.stringify(nhanXet));}catch(e){}
+    loader();
+    toast('🤖 Đã tạo nhận xét cho '+ok+' HS!','ok');
+    hbFil(); // Refresh danh sách
+  }, 500);
 }
+
 
 function hbSaveBatch(){
   var lop=T('hb-lop').value;if(!lop){toast('⚠️ Chọn lớp','warn');return;}
@@ -3166,82 +3296,187 @@ function hbSaveBatch(){
 }
 
 // XUẤT WORD — ĐÚNG MẪU HỌC BẠ TT27
-function _wordBlob(html){
-  var pre=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>@page{size:A4;margin:2cm 1.5cm}body{font-family:"Times New Roman",serif;font-size:13pt;line-height:1.5}table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:4px 6px;font-size:12pt}h2,h3{text-align:center;margin:6px 0}p{margin:4px 0}
-/* ═══ HEADER KỲ ĐÁNH GIÁ ═══ */
-.hdr-ky{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 60%,#60a5fa 100%);color:white;padding:14px 22px;border-radius:14px;box-shadow:0 4px 16px rgba(30,64,175,.2),0 2px 4px rgba(0,0,0,.06);margin-bottom:14px;display:flex;align-items:center;gap:16px;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
-.hdr-ky::before{content:'';position:absolute;top:-30px;right:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.06)}
-.hdr-ky::after{content:'';position:absolute;bottom:-40px;left:30%;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
-.hdr-ky:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(30,64,175,.25),0 4px 8px rgba(0,0,0,.08)}
-.hdr-ky-ico{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;backdrop-filter:blur(4px)}
-.hdr-ky-info{flex:1;position:relative;z-index:1}
-.hdr-ky-title{font-size:15px;font-weight:700;letter-spacing:.3px}
-.hdr-ky-sub{font-size:12px;opacity:.85;margin-top:3px;font-weight:400}
-.hdr-ky-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;background:rgba(255,255,255,.18);backdrop-filter:blur(4px);font-size:12px;font-weight:700;letter-spacing:.5px;flex-shrink:0;position:relative;z-index:1;border:1px solid rgba(255,255,255,.15)}
-.hdr-ky-badge .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;animation:dotPulse 2s infinite}
-@keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.4}}
-@media(max-width:640px){
-  .hdr-ky{padding:12px 14px;gap:10px;border-radius:10px;flex-wrap:wrap}
-  .hdr-ky-ico{width:38px;height:38px;font-size:18px}
-  .hdr-ky-title{font-size:13px}
-  .hdr-ky-sub{font-size:11px}
-  .hdr-ky-badge{font-size:10px;padding:4px 10px}
-}
+// ═══════════════════════════════════════════════════════════════
+// HỌC BẠ SỐ — XUẤT WORD/PDF CHUẨN BỘ GD&ĐT (TT27)
+// ═══════════════════════════════════════════════════════════════
 
-</style></head><body>`;
-  return new Blob([pre+html+'</body></html>'],{type:'application/msword'});
-}
 function _dl(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);}
 
-function hbExportWord(){
-  var lop=T('hb-lop').value;if(!lop){toast('⚠️ Chọn lớp','warn');return;}
-  var school=localStorage.getItem('school_name_full')||'Trường Tiểu học Diễn Liên';
-  var list=hbFiltered;if(!list.length){toast('⚠️ Không có HS','warn');return;}
-  var html='';
-  list.forEach(function(s,idx){
-    var g=grades[s.ma]||{},kq=cTT(s.ma,s.khoi),nx=nhanXet[s.ma]||{},k=String(s.khoi),sj=SUBJ[k]||SUBJ['1'];
-    if(idx>0)html+='<br clear="all" style="page-break-before:always">';
-    html+='<p style="text-align:center;font-size:11pt">Trường: '+school+' &nbsp;&nbsp;&nbsp; Năm học 2025-2026</p>';
-    html+='<p><b>Họ và tên:</b> '+s.ten+' &nbsp; <b>Lớp:</b> '+s.lop+'</p>';
-    html+='<p><b>Chiều cao:</b> '+(nx.chieu_cao||'...')+' cm &nbsp; <b>Cân nặng:</b> '+(nx.can_nang||'...')+' kg</p>';
-    html+='<p><b>Nghỉ có phép:</b> '+(nx.nghi_phep||'0')+' &nbsp; <b>Nghỉ không phép:</b> '+(nx.nghi_kphep||'0')+'</p>';
-    // 1. Môn học
-    html+='<h3><b>1. Các môn học và hoạt động giáo dục</b></h3>';
-    html+='<table><tr><th style="width:25%">Môn học và HĐGD</th><th style="width:10%">Mức đạt được</th><th style="width:10%">Điểm KTĐK</th><th style="width:55%">Nhận xét</th></tr>';
-    sj.forEach(function(mn){
-      var mv=g[mn[1]]||'',dv=mn[2]?g[mn[2]]||'':'';
-      var mucDat={HTT:'T',HT:'Đ',CHT:'CCG'}[mv]||mv;
-      html+='<tr><td>'+mn[0]+'</td><td style="text-align:center">'+mucDat+'</td><td style="text-align:center">'+dv+'</td><td>'+(nx['nx_'+mn[1]]||'')+'</td></tr>';
-    });
-    html+='</table>';
-    // 2. Phẩm chất
-    html+='<h3><b>2. Những phẩm chất chủ yếu</b></h3>';
-    html+='<table><tr><th style="width:25%">Phẩm chất</th><th style="width:12%">Mức đạt được</th><th>Nhận xét</th></tr>';
-    PC.forEach(function(pc,i){var v=g[pc[1]]||'';html+='<tr><td>'+pc[0]+'</td><td style="text-align:center">'+v+'</td>';if(i===0)html+='<td rowspan="'+PC.length+'">'+(nx.nx_pham_chat||'')+'</td>';html+='</tr>';});
-    html+='</table>';
-    // 3.1 NL chung
-    var nlC=NL.slice(0,NL_CHUNG_IDX);
-    html+='<h3><b>3. Những năng lực cốt lõi</b></h3><p><b>3.1 Những năng lực chung</b></p>';
-    html+='<table><tr><th style="width:25%">Năng lực</th><th style="width:12%">Mức đạt được</th><th>Nhận xét</th></tr>';
-    nlC.forEach(function(nl,i){var v=g[nl[1]]||'';html+='<tr><td>'+nl[0]+'</td><td style="text-align:center">'+v+'</td>';if(i===0)html+='<td rowspan="'+nlC.length+'">'+(nx.nx_nl_chung||'')+'</td>';html+='</tr>';});
-    html+='</table>';
-    // 3.2 NL đặc thù
-    var nlD=NL.slice(NL_CHUNG_IDX);
-    html+='<p><b>3.2 Những năng lực đặc thù</b></p>';
-    html+='<table><tr><th style="width:25%">Năng lực</th><th style="width:12%">Mức đạt được</th><th>Nhận xét</th></tr>';
-    nlD.forEach(function(nl,i){var v=g[nl[1]]||'';html+='<tr><td>'+nl[0]+'</td><td style="text-align:center">'+v+'</td>';if(i===0)html+='<td rowspan="'+nlD.length+'">'+(nx.nx_nl_dacthu||'')+'</td>';html+='</tr>';});
-    html+='</table>';
-    // 4-6
-    html+='<p><b>4. Đánh giá kết quả giáo dục:</b> '+kqText(kq)+'.</p>';
-    html+='<p><b>5. Khen thưởng:</b></p><p>- '+(nx.khen_text||'')+'</p>';
-    html+='<p><b>6. Hoàn thành chương trình:</b></p><p>- '+(nx.hoan_thanh_text||'Hoàn thành chương trình lớp '+s.lop+'.')+'</p>';
-    // Chữ ký
-    html+='<br><table style="border:none"><tr><td style="border:none;text-align:center;width:50%"><b>Xác nhận của Hiệu trưởng</b><br><i>(Ký, ghi rõ họ tên và đóng dấu)</i><br><br><br><br></td><td style="border:none;text-align:center"><b>Giáo viên chủ nhiệm</b><br><i>(Ký và ghi rõ họ tên)</i><br><br><br><br></td></tr></table>';
-  });
-  _dl(_wordBlob(html),'HocBa_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.doc');
-  toast('📄 Xuất Word học bạ','ok');
+function _hbWordBlob(html){
+  var css='@page{size:A4;margin:2cm 1.5cm}'
+    +'body{font-family:"Times New Roman",serif;font-size:13pt;line-height:1.6}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'td,th{border:0.5pt solid #888;padding:5px 8px;font-size:12pt;vertical-align:middle}'
+    +'h2,h3{margin:6px 0}'
+    +'p{margin:4px 0}'
+    +'.nb,.nb td,.nb th{border:none!important}'
+    +'.tc{text-align:center}'
+    +'.hdr{background:#D9E2F3;font-weight:bold;text-align:center}'
+    +'.hdr-pc{background:#FCE4D6;font-weight:bold;text-align:center}'
+    +'.hdr-nl{background:#E2EFDA;font-weight:bold;text-align:center}'
+    +'.cover-box{border:3pt double #000;padding:40px 50px;min-height:90%;display:flex;flex-direction:column;justify-content:space-between}'
+    +'.sign-tbl td{border:none!important;text-align:center;vertical-align:top;width:50%;padding-top:8px}';
+  var pre='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+    +'<head><meta charset="utf-8"><style>'+css+'</style></head><body>';
+  return new Blob([pre+html+'</body></html>'],{type:'application/msword'});
 }
 
+// ═══ RENDER 1 HS HỌC BẠ ═══
+function _renderHocBa1HS(s, showCover){
+  var g=grades[s.ma]||{}, kq=cTT(s.ma,s.khoi), nx=nhanXet[s.ma]||{};
+  var k=parseInt(s.khoi), sj=(SUBJ[String(k)]||SUBJ['1']).filter(function(x){return x[1]!=='mon_Tiếng_dân_tộc';});
+  var school=localStorage.getItem('school_name_full')||'Trường Tiểu học Diễn Liên';
+  var xa='Xã Diễn Liên', huyen='Huyện Diễn Châu', tinh='Tỉnh Nghệ An';
+  var namHoc='2025-2026';
+  var ht=localStorage.getItem('hieu_truong')||'';
+  var gvcn=nx.gvcn||'';
+  var now=new Date();
+  var dateStr=xa+', ngày '+now.getDate()+' tháng '+(now.getMonth()+1)+' năm '+now.getFullYear();
+  var mucDatMap={HTT:'T',HT:'Đ',CHT:'C'};
+  var allNL=_getAllNL(k);
+  var nlChung=allNL.slice(0,3);
+  var nlDacThu=allNL.slice(3);
+  var h='';
+
+  // ═══ TRANG BÌA (chỉ lớp 1) ═══
+  if(showCover){
+    h+='<div class="cover-box">';
+    h+='<div style="text-align:center"><p style="font-size:14pt;font-weight:bold">BỘ GIÁO DỤC VÀ ĐÀO TẠO</p></div>';
+    h+='<div style="text-align:center;padding:60px 0">';
+    h+='<p style="font-size:36pt;font-weight:bold;margin:20px 0">HỌC BẠ</p>';
+    h+='<p style="font-size:26pt;font-weight:bold">TIỂU HỌC</p>';
+    h+='</div>';
+    h+='<div>';
+    h+='<p style="font-size:14pt"><b>Họ và tên học sinh: '+s.ten.toUpperCase()+'</b></p>';
+    h+='<p style="font-size:14pt"><b>Trường: </b>'+school+'</p>';
+    h+='<p style="font-size:14pt"><b>Xã (Phường, Thị trấn): </b>'+xa+'</p>';
+    h+='<p style="font-size:14pt"><b>Huyện (Thành Phố, Quận, Thị xã): </b>'+huyen+'</p>';
+    h+='<p style="font-size:14pt"><b>Tỉnh (Thành phố): </b>'+tinh+'</p>';
+    h+='</div></div>';
+    h+='<br clear="all" style="page-break-before:always">';
+
+    // ═══ TRANG LÝ LỊCH ═══
+    h+='<h2 style="text-align:center;font-size:18pt"><b>HỌC BẠ</b></h2>';
+    h+='<p><b>Họ và tên học sinh:</b> <b>'+s.ten.toUpperCase()+'</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Giới tính:</b> '+(s.gt||'')+'</p>';
+    h+='<p><b>Ngày, tháng, năm sinh:</b> <b>'+(s.ns||'')+'</b> &nbsp;&nbsp; <b>Dân tộc:</b> '+(nx.dan_toc||'Kinh')+' &nbsp;&nbsp; <b>Quốc tịch:</b> Việt Nam</p>';
+    h+='<p><b>Nơi sinh:</b> '+(nx.noi_sinh||'')+'</p>';
+    h+='<p><b>Quê quán:</b> '+(nx.que_quan||'')+'</p>';
+    h+='<p><b>Nơi ở hiện nay:</b> '+(s.cho_o||nx.noi_o||'')+'</p>';
+    h+='<p><b>Họ và tên cha:</b> '+(nx.ho_cha||'')+'</p>';
+    h+='<p><b>Họ và tên mẹ:</b> '+(nx.ho_me||'')+'</p>';
+    h+='<p><b>Người giám hộ (nếu có):</b> '+(nx.giam_ho||'')+'</p>';
+    h+='<br><p style="text-align:center;font-style:italic">'+xa+', ngày ...... tháng ...... năm '+now.getFullYear()+'</p>';
+    h+='<p style="text-align:center"><b>Hiệu trưởng</b></p>';
+    h+='<p style="text-align:center;font-style:italic">(Ký, ghi rõ họ tên và đóng dấu)</p>';
+    h+='<br><br><br><p style="text-align:center"><b>'+ht+'</b></p>';
+    h+='<br><h3 style="text-align:center;font-size:14pt"><b>QUÁ TRÌNH HỌC TẬP</b></h3>';
+    h+='<table><tr><th>Năm học</th><th>Lớp</th><th>Tên trường</th><th>Sổ đăng bộ</th><th>Ngày nhập học/<br>chuyển đến</th></tr>';
+    h+='<tr><td class="tc">'+namHoc+'</td><td class="tc">'+s.lop+'</td><td class="tc">'+school+'</td><td></td><td></td></tr>';
+    for(var ei=0;ei<6;ei++) h+='<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>';
+    h+='</table>';
+    h+='<br clear="all" style="page-break-before:always">';
+  }
+
+  // ═══ TRANG MÔN HỌC ═══
+  h+='<p><b>Họ và tên học sinh:</b> <b>'+s.ten+'</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Lớp:</b> <b>'+s.lop+'</b></p>';
+  h+='<p><b>Chiều cao:</b> <b>'+(nx.chieu_cao||'...')+' cm</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Cân nặng:</b> <b>'+(nx.can_nang||'...')+' kg</b></p>';
+  h+='<p><b>Số ngày nghỉ có phép:</b> '+(nx.nghi_phep||'0')+' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Số ngày nghỉ không phép:</b> '+(nx.nghi_kphep||'0')+'</p>';
+  h+='<br><p><b>1. Các môn học và hoạt động giáo dục</b></p>';
+
+  var hasDiem=sj.some(function(mn){return mn[2]&&mn[3]&&_hasDiem(mn,k);});
+  h+='<table>';
+  h+='<tr><th class="hdr" style="width:25%">Môn học và hoạt động giáo dục</th><th class="hdr" style="width:10%">Mức đạt được</th>';
+  if(hasDiem) h+='<th class="hdr" style="width:9%">Điểm KTĐK</th>';
+  h+='<th class="hdr">Nhận xét</th></tr>';
+  sj.forEach(function(mn){
+    var mv=g[mn[1]]||'', dv=_hasDiem(mn,k)&&mn[2]?(g[mn[2]]||''):'';
+    h+='<tr><td>'+mn[0]+'</td><td class="tc">'+(mucDatMap[mv]||mv)+'</td>';
+    if(hasDiem) h+='<td class="tc">'+dv+'</td>';
+    h+='<td>'+(nx['nx_'+mn[1]]||'')+'</td></tr>';
+  });
+  h+='</table>';
+
+  h+='<br clear="all" style="page-break-before:always">';
+
+  // ═══ TRANG PHẨM CHẤT + NĂNG LỰC ═══
+  h+='<p><b>Trường:</b> <b>'+school+'</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Năm học</b> <b>'+namHoc+'</b></p>';
+  h+='<br><p><b>2. Những phẩm chất chủ yếu</b></p>';
+  h+='<table><tr><th class="hdr-pc" style="width:22%">Phẩm chất</th><th class="hdr-pc" style="width:12%">Mức đạt được</th><th class="hdr-pc">Nhận xét</th></tr>';
+  PC.forEach(function(pc,i){
+    var v=g[pc[1]]||'';
+    h+='<tr><td>'+pc[0]+'</td><td class="tc">'+v+'</td>';
+    if(i===0) h+='<td rowspan="'+PC.length+'">'+(nx.nx_pham_chat||'')+'</td>';
+    h+='</tr>';
+  });
+  h+='</table>';
+
+  h+='<br><p><b>3. Những năng lực cốt lõi</b></p>';
+  h+='<p><b><i>3.1 Những năng lực chung</i></b></p>';
+  h+='<table><tr><th class="hdr-nl" style="width:22%">Năng lực</th><th class="hdr-nl" style="width:12%">Mức đạt được</th><th class="hdr-nl">Nhận xét</th></tr>';
+  nlChung.forEach(function(nl,i){
+    var v=g[nl[1]]||'';
+    h+='<tr><td>'+nl[0]+'</td><td class="tc">'+v+'</td>';
+    if(i===0) h+='<td rowspan="'+nlChung.length+'">'+(nx.nx_nl_chung||'')+'</td>';
+    h+='</tr>';
+  });
+  h+='</table>';
+
+  h+='<br><p><b><i>3.2 Những năng lực đặc thù</i></b></p>';
+  h+='<table><tr><th class="hdr-nl" style="width:22%">Năng lực</th><th class="hdr-nl" style="width:12%">Mức đạt được</th><th class="hdr-nl">Nhận xét</th></tr>';
+  nlDacThu.forEach(function(nl,i){
+    var v=g[nl[1]]||'';
+    h+='<tr><td>'+nl[0]+'</td><td class="tc">'+v+'</td>';
+    if(i===0) h+='<td rowspan="'+nlDacThu.length+'">'+(nx.nx_nl_dacthu||'')+'</td>';
+    h+='</tr>';
+  });
+  h+='</table>';
+
+  h+='<br clear="all" style="page-break-before:always">';
+
+  // ═══ TRANG KẾT LUẬN ═══
+  h+='<p><b>4. Đánh giá kết quả giáo dục:</b> '+kqText(kq)+'.</p>';
+  h+='<br><p><b>5. Khen thưởng:</b></p>';
+  h+='<p>&nbsp;&nbsp; - '+(nx.khen_text||'...')+'</p>';
+  h+='<br><p><b>6. Hoàn thành chương trình lớp học/chương trình tiểu học:</b></p>';
+  h+='<p>&nbsp;&nbsp; - '+(nx.hoan_thanh_text||'Hoàn thành chương trình lớp '+s.lop+'.')+'</p>';
+  h+='<br><br><p style="text-align:right;font-style:italic">'+dateStr+'</p>';
+  h+='<br><table class="nb sign-tbl"><tr>';
+  h+='<td><b>Xác nhận của Hiệu trưởng</b><br><i>(Ký, ghi rõ họ tên và đóng dấu)</i><br><br><br><br><br><b>'+ht+'</b></td>';
+  h+='<td><b>Giáo viên chủ nhiệm</b><br><i>(Ký và ghi rõ họ tên)</i><br><br><br><br><br><b>'+gvcn+'</b></td>';
+  h+='</tr></table>';
+
+  return h;
+}
+
+// ═══ XUẤT HỌC BẠ WORD — CẢ LỚP ═══
+function hbExportWord(){
+  var lop=T('hb-lop').value;if(!lop){toast('⚠️ Chọn lớp','warn');return;}
+  var list=hbFiltered;if(!list.length){toast('⚠️ Không có HS','warn');return;}
+  var isLop1=(parseInt(lop)===1);
+  var html='';
+  list.forEach(function(s,idx){
+    if(idx>0) html+='<br clear="all" style="page-break-before:always">';
+    html+=_renderHocBa1HS(s, isLop1);
+  });
+  _dl(_hbWordBlob(html),'HocBa_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.doc');
+  toast('📄 Xuất học bạ '+list.length+' HS — Lớp '+lop,'ok');
+}
+
+// ═══ XUẤT HỌC BẠ WORD — 1 HS (gọi từ modal) ═══
+function hbExportWordOne(){
+  if(hbIdx===null){toast('⚠️ Chưa chọn HS','warn');return;}
+  var s=SB[hbIdx];if(!s)return;
+  // Tự động lưu nhận xét từ form trước khi xuất
+  var nx=_collectHBData();
+  nhanXet[s.ma]=nx;
+  try{localStorage.setItem('_nhanxet',JSON.stringify(nhanXet));}catch(e){}
+  var isLop1=(parseInt(s.khoi)===1);
+  var html=_renderHocBa1HS(s, isLop1);
+  _dl(_hbWordBlob(html),'HocBa_'+s.ten.replace(/\s+/g,'_')+'_'+s.lop+'.doc');
+  toast('📄 Xuất học bạ: '+s.ten,'ok');
+}
+
+// ═══ XUẤT EXCEL ═══
 function hbExportExcel(){
   var lop=T('hb-lop').value;if(!lop){toast('⚠️ Chọn lớp','warn');return;}
   var KL={HTXS:'HT Xuất sắc',HTT:'HT Tốt',HT:'Hoàn thành',CHT:'Chưa HT'};
@@ -3253,6 +3488,8 @@ function hbExportExcel(){
   XLSX.writeFile(wb,'HocBa_'+lop+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('📊 Xuất Excel','ok');
 }
+
+
 
 // BẢNG CHẤT LƯỢNG WORD
 function expBangCLWord(){
@@ -3270,7 +3507,7 @@ function expBangCLWord(){
   var tp=totR.nhap?Math.round((totR.htxs+totR.htt+totR.ht)/totR.nhap*100):0;
   html+='<tr style="font-weight:bold;background:#eef"><td>TỔNG</td><td>'+totR.tot+'</td><td>'+totR.nhap+'</td><td>'+totR.htxs+'</td><td>'+totR.htt+'</td><td>'+totR.ht+'</td><td>'+totR.cht+'</td><td>'+tp+'%</td><td>'+totR.xs+'</td><td>'+totR.tb+'</td><td>'+totR.ll+'</td></tr></table>';
   html+='<br><table style="border:none"><tr><td style="border:none;text-align:center;width:50%"><br>Người lập</td><td style="border:none;text-align:center">Ngày ... tháng ... năm 2026<br>Hiệu trưởng</td></tr></table>';
-  _dl(_wordBlob(html),'BangChatLuong_'+new Date().toISOString().slice(0,10)+'.doc');
+  _dl(_hbWordBlob(html),'BangChatLuong_'+new Date().toISOString().slice(0,10)+'.doc');
   toast('📄 Xuất bảng chất lượng','ok');
 }
 
