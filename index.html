@@ -7,7 +7,7 @@
 <title>Quản lý Chất lượng GDTH — TH Diễn Liên</title>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
 /* ═══════════════════════════════════════════════
    PHASE 2 — REFINED EDITORIAL DESIGN
@@ -656,13 +656,13 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   <div class="tb ao" id="d-import-admin" style="margin-bottom:6px">
     <button class="btn bpur" onclick="createMauChuan()">📥 Xuất file mẫu</button>
     <button class="btn bg" onclick="T('d-file-inp').click()">📤 Nhập từ Excel</button>
-    <input type="file" id="d-file-inp" accept=".xlsx,.xls,.csv,.htm,.html" style="display:none" onchange="onDiemFile(this)">
+    <input type="file" id="d-file-inp" accept=".xlsx,.xls,.csv" style="display:none" onchange="onDiemFile(this)">
     <span id="d-import-info" style="font-size:11px;color:var(--slate3)"></span>
   </div>
   <div class="tb gv-only" style="margin-bottom:6px" id="d-import-gv">
     <button class="btn bpur" onclick="dlMauGV()">📥 Tải mẫu theo phân công</button>
     <button class="btn bg" onclick="T('d-file-gv').click()">📤 Nhập kết quả từ Excel</button>
-    <input type="file" id="d-file-gv" accept=".xlsx,.xls,.csv,.htm,.html" style="display:none" onchange="onDiemFileGV(this)">
+    <input type="file" id="d-file-gv" accept=".xlsx,.xls,.csv" style="display:none" onchange="onDiemFileGV(this)">
     <span id="d-gv-info" style="font-size:11px;color:var(--slate3)"></span>
   </div>
   <div class="tw"><div class="ts" id="d-table-wrap">
@@ -852,7 +852,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       <div class="drop-zone" id="drop-zone" onclick="T('file-inp').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)">
         <div style="font-size:36px">📂</div><p><strong>Nhấn chọn file</strong> hoặc kéo thả</p>
       </div>
-      <input type="file" id="file-inp" accept=".xlsx,.xls,.csv,.htm,.html" style="display:none" onchange="onFileChange(this)">
+      <input type="file" id="file-inp" accept=".xlsx,.xls,.csv" style="display:none" onchange="onFileChange(this)">
       <div id="imp-preview"></div>
     </div>
   </div>
@@ -1715,6 +1715,39 @@ function _storeToDisplay(val,type){
 // ═══════════════════════════════════════════════════════════════
 // XUẤT FILE MẪU — 20 MẪU ĐỘNG THEO KHỐI × KỲ (TT27/2020)
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// XLSX STYLED HELPERS (xlsx-js-style)
+// ═══════════════════════════════════════════════════════════════
+var _XS={
+  bdr:{top:{style:'thin',color:{rgb:'AAAAAA'}},bottom:{style:'thin',color:{rgb:'AAAAAA'}},left:{style:'thin',color:{rgb:'AAAAAA'}},right:{style:'thin',color:{rgb:'AAAAAA'}}},
+  green:{font:{bold:true,sz:10,name:'Arial'},fill:{fgColor:{rgb:'C6EFCE'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}},
+  greenDk:{font:{bold:true,sz:10,name:'Arial',color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'92D050'}},alignment:{horizontal:'center',vertical:'center'}},
+  blue:{font:{bold:true,sz:9,name:'Arial'},fill:{fgColor:{rgb:'D6E4F0'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}},
+  orangeDk:{font:{bold:true,sz:10,name:'Arial'},fill:{fgColor:{rgb:'F4B084'}},alignment:{horizontal:'center',vertical:'center'}},
+  orange:{font:{bold:true,sz:9,name:'Arial'},fill:{fgColor:{rgb:'FCE4D6'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}},
+  purpleDk:{font:{bold:true,sz:10,name:'Arial'},fill:{fgColor:{rgb:'9BC2E6'}},alignment:{horizontal:'center',vertical:'center'}},
+  purple:{font:{bold:true,sz:9,name:'Arial'},fill:{fgColor:{rgb:'E2D9F3'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}},
+  yellow:{font:{bold:true,sz:9,name:'Arial'},fill:{fgColor:{rgb:'FFF2CC'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}},
+  infoDk:{font:{bold:true,sz:10,name:'Arial',color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'2E7D32'}},alignment:{horizontal:'left',vertical:'center'}},
+  monDk:{font:{bold:true,sz:10,name:'Arial',color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1565C0'}},alignment:{horizontal:'center',vertical:'center'}},
+  nlDk:{font:{bold:true,sz:10,name:'Arial',color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'E65100'}},alignment:{horizontal:'center',vertical:'center'}},
+  pcDk:{font:{bold:true,sz:10,name:'Arial',color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'6A1B9A'}},alignment:{horizontal:'center',vertical:'center'}},
+  data:{font:{sz:11,name:'Arial'},alignment:{horizontal:'center',vertical:'center'}},
+  name:{font:{sz:11,name:'Arial'},alignment:{horizontal:'left',vertical:'center'}},
+  hide:{font:{sz:1,name:'Arial',color:{rgb:'FFFFFF'}},alignment:{horizontal:'left'}}
+};
+function _xs(base){return{font:Object.assign({},base.font),fill:base.fill?{fgColor:Object.assign({},base.fill.fgColor)}:undefined,border:_XS.bdr,alignment:Object.assign({},base.alignment)};}
+function _xsSet(ws,r,c,val,style){
+  var addr=XLSX.utils.encode_cell({r:r,c:c});
+  if(!ws[addr])ws[addr]={v:val||'',t:'s'};
+  ws[addr].v=val||'';ws[addr].t='s';
+  ws[addr].s=style;
+}
+function _xsSetRange(ws,ref){if(!ws['!merges'])ws['!merges']=[];ws['!merges'].push(ref);}
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN: XUẤT FILE MẪU
+// ═══════════════════════════════════════════════════════════════
 function createMauChuan(){
   var lop=T('d-lop').value;
   if(!lop){toast('⚠️ Chọn lớp trước','warn');return;}
@@ -1726,122 +1759,237 @@ function createMauChuan(){
   if(!hsLop.length){toast('⚠️ Không có HS lớp '+lop,'warn');return;}
   var sj=_visibleSubj(k);
 
-  // ═══ XÁC ĐỊNH CỘT MÔN HỌC ═══
-  var monHeaders=[];
-  var monKeys=[];
+  // Chuẩn bị cột
+  var monH=[],monK=[];
   sj.forEach(function(mn){
     var hd=_hasDiem(mn,k);
-    monHeaders.push({name:mn[0],key:mn[1],dk:hd?mn[2]:null,hd:hd});
-    monKeys.push(mn[1]);
-    if(hd) monKeys.push(mn[2]);
+    monH.push({n:mn[0],k:mn[1],dk:hd?mn[2]:null,hd:hd});
+    monK.push(mn[1]);if(hd)monK.push(mn[2]);
   });
-  var totalMonCols=monHeaders.reduce(function(s,m){return s+(m.hd?2:1);},0);
+  var totalMon=monH.reduce(function(s,m){return s+(m.hd?2:1);},0);
+  var nlC=NL.slice(0,NL_CHUNG_IDX),nlD=_getNLDacThu(k);
+  var tailH=isCN?['Hoàn thành CT','Lên lớp','Khen thưởng']:[];
+  var tailK=isCN?['hoan_thanh','len_lop','khen_thuong']:[];
 
-  // NL
-  var nlC=NL.slice(0,NL_CHUNG_IDX);
-  var nlD=_getNLDacThu(k);
+  var ws={}; var R=0;
 
-  // ═══ STYLES ═══
-  var bdr='border:0.5pt solid #aaa;';
-  var ctr='text-align:center;vertical-align:middle;';
-  var bold='font-weight:bold;';
-  var wrap='word-wrap:break-word;';
-  var sGreen='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
-  var sGreenDk='background:#92d050;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sBlue='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sOrangeDk='background:#f4b084;'+bdr+ctr+bold+'font-size:9pt;';
-  var sOrange='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sPurpleDk='background:#9bc2e6;'+bdr+ctr+bold+'font-size:9pt;';
-  var sPurple='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sYellow='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sData=bdr+ctr+'font-size:10pt;';
-  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
-  var sHide='font-size:1pt;color:#fff;border:none;height:1px;overflow:hidden;';
+  // ── ROW 0-2: Headers ──
+  var ci=5; // after STT,Lớp,Mã,Tên,NS
+  // Info cols (merge 3 rows)
+  ['STT','Mã lớp','Mã học sinh','Họ tên','Ngày sinh'].forEach(function(h,i){
+    _xsSet(ws,0,i,h,_xs(_XS.green));_xsSet(ws,1,i,'',_xs(_XS.green));_xsSet(ws,2,i,'',_xs(_XS.green));
+    _xsSetRange(ws,{s:{r:0,c:i},e:{r:2,c:i}});
+  });
 
-  // ═══ BUILD HTML ═══
-  var h='';
-  var tailHeaders=isCN?['Hoàn thành<br>CT','Lên<br>lớp','Khen<br>thưởng']:[];
-  var tailKeys=isCN?['hoan_thanh','len_lop','khen_thuong']:[];
+  // Môn group
+  _xsSet(ws,0,ci,'Môn học và hoạt động giáo dục',_xs(_XS.greenDk));
+  for(var fi=ci+1;fi<ci+totalMon;fi++)_xsSet(ws,0,fi,'',_xs(_XS.greenDk));
+  _xsSetRange(ws,{s:{r:0,c:ci},e:{r:0,c:ci+totalMon-1}});
+
+  // Môn names (row 1-2)
+  var ci2=ci;
+  monH.forEach(function(m){
+    if(m.hd){
+      _xsSet(ws,1,ci2,m.n,_xs(_XS.blue));_xsSet(ws,1,ci2+1,'',_xs(_XS.blue));
+      _xsSetRange(ws,{s:{r:1,c:ci2},e:{r:1,c:ci2+1}});
+      _xsSet(ws,2,ci2,'Mức đạt',_xs(_XS.blue));
+      _xsSet(ws,2,ci2+1,'Điểm KTĐK',_xs(_XS.blue));
+      ci2+=2;
+    }else{
+      _xsSet(ws,1,ci2,m.n,_xs(_XS.blue));_xsSet(ws,2,ci2,'',_xs(_XS.blue));
+      _xsSetRange(ws,{s:{r:1,c:ci2},e:{r:2,c:ci2}});
+      ci2++;
+    }
+  });
+
+  // NL group
+  var nlStart=ci2;
+  _xsSet(ws,0,nlStart,'Năng lực cốt lõi',_xs(_XS.orangeDk));
+  for(var fi=nlStart+1;fi<nlStart+nlC.length+nlD.length;fi++)_xsSet(ws,0,fi,'',_xs(_XS.orangeDk));
+  _xsSetRange(ws,{s:{r:0,c:nlStart},e:{r:0,c:nlStart+nlC.length+nlD.length-1}});
+  // NL chung sub
+  _xsSet(ws,1,nlStart,'Năng lực chung',_xs(_XS.orange));
+  for(var fi=nlStart+1;fi<nlStart+nlC.length;fi++)_xsSet(ws,1,fi,'',_xs(_XS.orange));
+  _xsSetRange(ws,{s:{r:1,c:nlStart},e:{r:1,c:nlStart+nlC.length-1}});
+  nlC.forEach(function(nl,i){_xsSet(ws,2,nlStart+i,nl[0],_xs(_XS.orange));});
+  // NL đặc thù sub
+  var nldS=nlStart+nlC.length;
+  _xsSet(ws,1,nldS,'Năng lực đặc thù',_xs(_XS.orange));
+  for(var fi=nldS+1;fi<nldS+nlD.length;fi++)_xsSet(ws,1,fi,'',_xs(_XS.orange));
+  _xsSetRange(ws,{s:{r:1,c:nldS},e:{r:1,c:nldS+nlD.length-1}});
+  nlD.forEach(function(nl,i){_xsSet(ws,2,nldS+i,nl[0],_xs(_XS.orange));});
+
+  // PC group
+  var pcStart=nldS+nlD.length;
+  _xsSet(ws,0,pcStart,'Phẩm chất chủ yếu',_xs(_XS.purpleDk));
+  for(var fi=pcStart+1;fi<pcStart+PC.length;fi++)_xsSet(ws,0,fi,'',_xs(_XS.purpleDk));
+  _xsSetRange(ws,{s:{r:0,c:pcStart},e:{r:0,c:pcStart+PC.length-1}});
+  PC.forEach(function(pc,i){
+    _xsSet(ws,1,pcStart+i,pc[0],_xs(_XS.purple));_xsSet(ws,2,pcStart+i,'',_xs(_XS.purple));
+    _xsSetRange(ws,{s:{r:1,c:pcStart+i},e:{r:2,c:pcStart+i}});
+  });
+
+  // Tail
+  var tlStart=pcStart+PC.length;
+  tailH.forEach(function(t,i){
+    _xsSet(ws,0,tlStart+i,t,_xs(_XS.yellow));_xsSet(ws,1,tlStart+i,'',_xs(_XS.yellow));_xsSet(ws,2,tlStart+i,'',_xs(_XS.yellow));
+    _xsSetRange(ws,{s:{r:0,c:tlStart+i},e:{r:2,c:tlStart+i}});
+  });
+
+  var totalCols=tlStart+tailH.length;
+
+  // ── ROW 3: KEY ROW ──
+  var allKeys=['__KEYS__','_lop_','_ma_','_ten_','_ns_'].concat(monK);
+  nlC.forEach(function(nl){allKeys.push(nl[1]);});
+  nlD.forEach(function(nl){allKeys.push(nl[1]);});
+  PC.forEach(function(pc){allKeys.push(pc[1]);});
+  tailK.forEach(function(k){allKeys.push(k);});
+  allKeys.forEach(function(k,i){_xsSet(ws,3,i,k,_xs(_XS.hide));});
+
+  // ── ROW 4+: DATA ──
+  hsLop.forEach(function(s,idx){
+    var r=idx+4,g=grades[s.ma]||{},ci3=0;
+    _xsSet(ws,r,ci3++,String(idx+1),_xs(_XS.data));
+    _xsSet(ws,r,ci3++,s.lop,_xs(_XS.data));
+    _xsSet(ws,r,ci3++,String(s.ma),_xs(_XS.data));
+    _xsSet(ws,r,ci3++,s.ten,_xs(_XS.name));
+    _xsSet(ws,r,ci3++,s.ns||'',_xs(_XS.data));
+    monH.forEach(function(m){
+      var mv=g[m.k]||'';_xsSet(ws,r,ci3++,mv?_storeToDisplay(mv,'mon'):'',_xs(_XS.data));
+      if(m.hd){var dv=g[m.dk]||'';_xsSet(ws,r,ci3++,dv?String(dv):'',_xs(_XS.data));}
+    });
+    nlC.forEach(function(nl){var v=g[nl[1]]||'';_xsSet(ws,r,ci3++,v?_storeToDisplay(v,'nlpc'):'',_xs(_XS.data));});
+    nlD.forEach(function(nl){var v=g[nl[1]]||'';_xsSet(ws,r,ci3++,v?_storeToDisplay(v,'nlpc'):'',_xs(_XS.data));});
+    PC.forEach(function(pc){var v=g[pc[1]]||'';_xsSet(ws,r,ci3++,v?_storeToDisplay(v,'nlpc'):'',_xs(_XS.data));});
+    tailK.forEach(function(k){_xsSet(ws,r,ci3++,g[k]||'',_xs(_XS.data));});
+  });
+
+  // Range & cols
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:hsLop.length+3,c:totalCols-1}});
+  var cols=[{wch:5},{wch:6},{wch:14},{wch:22},{wch:11}];
+  for(var i=5;i<totalCols;i++)cols.push({wch:9});
+  ws['!cols']=cols;
+  ws['!rows']=[{hpt:25},{hpt:22},{hpt:35},{hpt:3}];
+
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,periodCode+'_Lop'+lop);
+  XLSX.writeFile(wb,'Mau_'+periodCode+'_Khoi'+k+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('📥 Mẫu '+periodName+' — Lớp '+lop+' ('+hsLop.length+' HS)','ok');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GV: TẢI MẪU THEO PHÂN CÔNG
+// ═══════════════════════════════════════════════════════════════
+function dlMauGV(){
+  var subjMap=_getGVSubjects();
+  if(!subjMap){toast('⚠️ Không có phân công giảng dạy','warn');return;}
+  var allLops=[];
+  Object.keys(subjMap).forEach(function(key){subjMap[key].forEach(function(lop){if(allLops.indexOf(lop)<0)allLops.push(lop);});});
+  allLops.sort();
+  if(!allLops.length){toast('⚠️ Không có lớp nào','warn');return;}
+  var allHS=[];
+  allLops.forEach(function(lop){mySB().filter(function(s){return s.lop===lop;}).forEach(function(s){allHS.push(s);});});
+  if(!allHS.length){toast('⚠️ Không có HS','warn');return;}
+
+  var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
+  var isGVCN=!!(CU&&CU.lop&&CU.lop.trim());
+  var isCN=(curPeriod==='cn');
+  var maxKhoi=Math.max.apply(null,allLops.map(function(l){return parseInt(l)||1;}));
+
+  var subjKeys=Object.keys(subjMap).filter(function(k){return k.indexOf('mon_')===0;});
+  var monCols=[],monKeyList=[];
+  subjKeys.forEach(function(skey){
+    var name=_subjKeyToName(skey);
+    var anyDiem=allLops.some(function(lop){return _subjHasDiem(skey,parseInt(lop));});
+    if(anyDiem){monCols.push({n:name,k:skey,dk:'diem_'+skey.replace('mon_',''),hd:true});monKeyList.push(skey);monKeyList.push('diem_'+skey.replace('mon_',''));}
+    else{monCols.push({n:name,k:skey,dk:null,hd:false});monKeyList.push(skey);}
+  });
+  var totalMon=monCols.reduce(function(s,m){return s+(m.hd?2:1);},0);
+
+  var nlKeys=[],pcKeys=[];
+  if(isGVCN){_getAllNL(maxKhoi).forEach(function(nl){nlKeys.push(nl[1]);});PC.forEach(function(pc){pcKeys.push(pc[1]);});}
+  Object.keys(subjMap).forEach(function(k){
+    if(k.indexOf('nl_')===0&&nlKeys.indexOf(k)<0)nlKeys.push(k);
+    if(k.indexOf('pc_')===0&&pcKeys.indexOf(k)<0)pcKeys.push(k);
+  });
+  var tailKeys=isCN&&isGVCN?['len_lop']:[];
+  var totalCols=4+totalMon+nlKeys.length+pcKeys.length+tailKeys.length;
+
+  var ws={}; var R=0;
+
+  // ROW 0: Title
+  _xsSet(ws,0,0,'Mẫu nhập kết quả — '+(CU.hoten||CU.username)+' — '+periodName,_xs(_XS.infoDk));
+  for(var i=1;i<totalCols;i++)_xsSet(ws,0,i,'',_xs(_XS.infoDk));
+  _xsSetRange(ws,{s:{r:0,c:0},e:{r:0,c:totalCols-1}});
 
   // ROW 1: Group headers
-  h+='<tr height="30">';
-  ['STT','Mã lớp','Mã học<br>sinh','Họ tên','Ngày<br>sinh'].forEach(function(c){h+='<td rowspan="3" style="'+sGreen+'">'+c+'</td>';});
-  h+='<td colspan="'+totalMonCols+'" style="'+sGreenDk+'">Môn học và hoạt động giáo dục</td>';
-  h+='<td colspan="'+(nlC.length+nlD.length)+'" style="'+sOrangeDk+'">Năng lực cốt lõi</td>';
-  h+='<td colspan="'+PC.length+'" style="'+sPurpleDk+'">Phẩm chất chủ yếu</td>';
-  tailHeaders.forEach(function(t){h+='<td rowspan="3" style="'+sYellow+'">'+t+'</td>';});
-  h+='</tr>';
-
-  // ROW 2: Mon names + NL sub-groups
-  h+='<tr height="25">';
-  monHeaders.forEach(function(m){
-    if(m.hd){h+='<td colspan="2" style="'+sBlue+'">'+m.name+'</td>';}
-    else{h+='<td rowspan="2" style="'+sBlue+'">'+m.name+'</td>';}
+  ['STT','Lớp','Mã học sinh','Họ tên'].forEach(function(h,i){
+    _xsSet(ws,1,i,h,_xs(_XS.green));_xsSet(ws,2,i,'',_xs(_XS.green));
+    _xsSetRange(ws,{s:{r:1,c:i},e:{r:2,c:i}});
   });
-  h+='<td colspan="'+nlC.length+'" style="'+sOrange+'">Năng lực chung</td>';
-  h+='<td colspan="'+nlD.length+'" style="'+sOrange+'">Năng lực đặc thù</td>';
-  PC.forEach(function(pc){h+='<td rowspan="2" style="'+sPurple+'">'+pc[0]+'</td>';});
-  h+='</tr>';
 
-  // ROW 3: Diem sub + NL detail
-  h+='<tr height="40">';
-  monHeaders.forEach(function(m){if(m.hd){h+='<td style="'+sBlue+'">Mức<br>đạt</td><td style="'+sBlue+'">Điểm<br>KTĐK</td>';}});
-  nlC.forEach(function(nl){h+='<td style="'+sOrange+'">'+nl[0]+'</td>';});
-  nlD.forEach(function(nl){h+='<td style="'+sOrange+'">'+nl[0]+'</td>';});
-  h+='</tr>';
+  var ci=4;
+  if(totalMon>0){
+    _xsSet(ws,1,ci,'Môn học và hoạt động giáo dục',_xs(_XS.monDk));
+    for(var fi=ci+1;fi<ci+totalMon;fi++)_xsSet(ws,1,fi,'',_xs(_XS.monDk));
+    _xsSetRange(ws,{s:{r:1,c:ci},e:{r:1,c:ci+totalMon-1}});
+  }
+  // Mon names (row 2)
+  var ci2=ci;
+  monCols.forEach(function(m){
+    if(m.hd){_xsSet(ws,2,ci2,m.n+' (ĐG)',_xs(_XS.blue));_xsSet(ws,2,ci2+1,m.n+' (Điểm)',_xs(_XS.blue));ci2+=2;}
+    else{_xsSet(ws,2,ci2,m.n,_xs(_XS.blue));ci2++;}
+  });
 
-  // KEY ROW (ẩn)
-  h+='<tr height="1">';
-  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td><td style="'+sHide+'">_ns_</td>';
-  monKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  nlC.forEach(function(nl){h+='<td style="'+sHide+'">'+nl[1]+'</td>';});
-  nlD.forEach(function(nl){h+='<td style="'+sHide+'">'+nl[1]+'</td>';});
-  PC.forEach(function(pc){h+='<td style="'+sHide+'">'+pc[1]+'</td>';});
-  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  h+='</tr>';
+  if(nlKeys.length>0){
+    _xsSet(ws,1,ci2,'Năng lực',_xs(_XS.nlDk));
+    for(var fi=ci2+1;fi<ci2+nlKeys.length;fi++)_xsSet(ws,1,fi,'',_xs(_XS.nlDk));
+    _xsSetRange(ws,{s:{r:1,c:ci2},e:{r:1,c:ci2+nlKeys.length-1}});
+    nlKeys.forEach(function(k,i){_xsSet(ws,2,ci2+i,_subjKeyToName(k),_xs(_XS.orange));});
+    ci2+=nlKeys.length;
+  }
+  if(pcKeys.length>0){
+    _xsSet(ws,1,ci2,'Phẩm chất',_xs(_XS.pcDk));
+    for(var fi=ci2+1;fi<ci2+pcKeys.length;fi++)_xsSet(ws,1,fi,'',_xs(_XS.pcDk));
+    _xsSetRange(ws,{s:{r:1,c:ci2},e:{r:1,c:ci2+pcKeys.length-1}});
+    pcKeys.forEach(function(k,i){_xsSet(ws,2,ci2+i,_subjKeyToName(k),_xs(_XS.purple));});
+    ci2+=pcKeys.length;
+  }
+  tailKeys.forEach(function(k,i){
+    _xsSet(ws,1,ci2+i,'Lên lớp',_xs(_XS.yellow));_xsSet(ws,2,ci2+i,'',_xs(_XS.yellow));
+    _xsSetRange(ws,{s:{r:1,c:ci2+i},e:{r:2,c:ci2+i}});
+  });
 
-  // DATA ROWS
-  hsLop.forEach(function(s,i){
-    var g=grades[s.ma]||{};
-    h+='<tr height="26">';
-    h+='<td style="'+sData+'">'+(i+1)+'</td>';
-    h+='<td style="'+sData+'">'+s.lop+'</td>';
-    h+='<td style="'+sData+'">'+s.ma+'</td>';
-    h+='<td style="'+sName+'">'+s.ten+'</td>';
-    h+='<td style="'+sData+'">'+(s.ns||'')+'</td>';
-    monHeaders.forEach(function(m){
-      var mv=g[m.key]||'';h+='<td style="'+sData+'">'+(mv?_storeToDisplay(mv,'mon'):'')+'</td>';
-      if(m.hd){var dv=g[m.dk]||'';h+='<td style="'+sData+'">'+dv+'</td>';}
+  // ROW 3: KEY ROW
+  var allK=['__KEYS__','_lop_','_ma_','_ten_'].concat(monKeyList,nlKeys,pcKeys,tailKeys);
+  allK.forEach(function(k,i){_xsSet(ws,3,i,k,_xs(_XS.hide));});
+
+  // ROW 4+: DATA
+  allHS.forEach(function(s,idx){
+    var r=idx+4,g=grades[s.ma]||{},ci3=0;
+    _xsSet(ws,r,ci3++,String(idx+1),_xs(_XS.data));
+    _xsSet(ws,r,ci3++,s.lop,_xs(_XS.data));
+    _xsSet(ws,r,ci3++,String(s.ma),_xs(_XS.data));
+    _xsSet(ws,r,ci3++,s.ten,_xs(_XS.name));
+    monCols.forEach(function(m){
+      var mv=g[m.k]||'';_xsSet(ws,r,ci3++,mv?_storeToDisplay(mv,'mon'):'',_xs(_XS.data));
+      if(m.hd){var dk=_subjDiemKey(m.k,s.khoi);_xsSet(ws,r,ci3++,dk&&g[dk]!==undefined?String(g[dk]):'',_xs(_XS.data));}
     });
-    nlC.forEach(function(nl){var v=g[nl[1]]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    nlD.forEach(function(nl){var v=g[nl[1]]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    PC.forEach(function(pc){var v=g[pc[1]]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    tailKeys.forEach(function(k){h+='<td style="'+sData+'">'+(g[k]||'')+'</td>';});
-    h+='</tr>';
+    nlKeys.forEach(function(k){var v=g[k]||'';_xsSet(ws,r,ci3++,v?_storeToDisplay(v,'nlpc'):'',_xs(_XS.data));});
+    pcKeys.forEach(function(k){var v=g[k]||'';_xsSet(ws,r,ci3++,v?_storeToDisplay(v,'nlpc'):'',_xs(_XS.data));});
+    tailKeys.forEach(function(k){_xsSet(ws,r,ci3++,g[k]||'',_xs(_XS.data));});
   });
 
-  // COL WIDTHS
-  var colW='<col width="35"><col width="45"><col width="90"><col width="170"><col width="85">';
-  for(var i=0;i<totalMonCols;i++) colW+='<col width="55">';
-  for(var i=0;i<nlC.length+nlD.length;i++) colW+='<col width="60">';
-  for(var i=0;i<PC.length;i++) colW+='<col width="55">';
-  for(var i=0;i<tailHeaders.length;i++) colW+='<col width="60">';
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:allHS.length+3,c:totalCols-1}});
+  var cols=[{wch:5},{wch:6},{wch:14},{wch:22}];
+  for(var i=4;i<totalCols;i++)cols.push({wch:10});
+  ws['!cols']=cols;
+  ws['!rows']=[{hpt:24},{hpt:24},{hpt:35},{hpt:3}];
 
-  // XUẤT FILE .htm (không cảnh báo Excel)
-  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
-    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
-    +'<x:Name>'+periodCode+'_Lop'+lop+'</x:Name>'
-    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>5</x:SplitHorizontal><x:TopRowBottomPane>5</x:TopRowBottomPane>'
-    +'<x:SplitVertical>5</x:SplitVertical><x:LeftColumnRightPane>5</x:LeftColumnRightPane></x:WorksheetOptions>'
-    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
-    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
-    +'<body><table>'+colW+h+'</table></body></html>';
-
-  var blob=new Blob([html],{type:'text/html'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='Mau_'+periodCode+'_Khoi'+k+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.htm';
-  a.click();URL.revokeObjectURL(a.href);
-  toast('📥 Đã tải mẫu '+periodName+' — Lớp '+lop+' ('+hsLop.length+' HS)','ok');
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'KetQua');
+  XLSX.writeFile(wb,'NhapDiem_'+(CU.hoten||CU.username).replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('📥 Mẫu '+periodName+': '+allHS.length+' HS ('+allLops.join(', ')+')','ok');
 }
 
 function onDiemFile(inp){
@@ -2081,149 +2229,6 @@ function _subjDiemKey(monKey,khoi){
   return null;
 }
 
-
-function dlMauGV(){
-  var subjMap=_getGVSubjects();
-  if(!subjMap){toast('⚠️ Không có phân công giảng dạy','warn');return;}
-  var allLops=[];
-  Object.keys(subjMap).forEach(function(key){subjMap[key].forEach(function(lop){if(allLops.indexOf(lop)<0)allLops.push(lop);});});
-  allLops.sort();
-  if(!allLops.length){toast('⚠️ Không có lớp nào','warn');return;}
-  var allHS=[];
-  allLops.forEach(function(lop){mySB().filter(function(s){return s.lop===lop;}).forEach(function(s){allHS.push(s);});});
-  if(!allHS.length){toast('⚠️ Không có HS','warn');return;}
-
-  var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
-  var isGVCN=!!(CU&&CU.lop&&CU.lop.trim());
-  var isCN=(curPeriod==='cn');
-  var maxKhoi=Math.max.apply(null,allLops.map(function(l){return parseInt(l)||1;}));
-
-  // GOM CỘT
-  var subjKeys=Object.keys(subjMap).filter(function(k){return k.indexOf('mon_')===0;});
-  var monCols=[], monKeyList=[];
-  subjKeys.forEach(function(skey){
-    var name=_subjKeyToName(skey);
-    var anyDiem=allLops.some(function(lop){return _subjHasDiem(skey,parseInt(lop));});
-    if(anyDiem){
-      monCols.push({name:name,key:skey,dk:'diem_'+skey.replace('mon_',''),hd:true});
-      monKeyList.push(skey);monKeyList.push('diem_'+skey.replace('mon_',''));
-    }else{
-      monCols.push({name:name,key:skey,dk:null,hd:false});
-      monKeyList.push(skey);
-    }
-  });
-  var totalMonCols=monCols.reduce(function(s,m){return s+(m.hd?2:1);},0);
-
-  var nlKeys=[], pcKeys=[];
-  if(isGVCN){
-    _getAllNL(maxKhoi).forEach(function(nl){nlKeys.push(nl[1]);});
-    PC.forEach(function(pc){pcKeys.push(pc[1]);});
-  }
-  Object.keys(subjMap).forEach(function(k){
-    if(k.indexOf('nl_')===0&&nlKeys.indexOf(k)<0) nlKeys.push(k);
-    if(k.indexOf('pc_')===0&&pcKeys.indexOf(k)<0) pcKeys.push(k);
-  });
-  var tailKeys=isCN&&isGVCN?['len_lop']:[];
-
-  // STYLES
-  var bdr='border:0.5pt solid #aaa;';
-  var ctr='text-align:center;vertical-align:middle;';
-  var bold='font-weight:bold;';
-  var wrap='word-wrap:break-word;';
-  var sInfo='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
-  var sInfoDk='background:#2e7d32;'+bdr+ctr+bold+'font-size:10pt;color:#fff;text-align:left;padding-left:10px;';
-  var sMon='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sMonDk='background:#1565c0;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sNL='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sNLDk='background:#e65100;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sPC='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sPCDk='background:#6a1b9a;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
-  var sTail='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
-  var sData=bdr+ctr+'font-size:10pt;';
-  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
-  var sHide='font-size:1pt;color:#fff;border:none;height:1px;overflow:hidden;';
-
-  // BUILD HTML
-  var totalCols=4+totalMonCols+nlKeys.length+pcKeys.length+tailKeys.length;
-  var h='';
-
-  // TITLE
-  h+='<tr height="28"><td colspan="'+totalCols+'" style="'+sInfoDk+'">';
-  h+='📋 Mẫu nhập kết quả — '+(CU.hoten||CU.username)+' — '+periodName+'</td></tr>';
-
-  // GROUP HEADERS
-  h+='<tr height="28">';
-  ['STT','Lớp','Mã học<br>sinh','Họ tên'].forEach(function(c){h+='<td rowspan="2" style="'+sInfo+'">'+c+'</td>';});
-  if(totalMonCols>0) h+='<td colspan="'+totalMonCols+'" style="'+sMonDk+'">Môn học và hoạt động giáo dục</td>';
-  if(nlKeys.length>0) h+='<td colspan="'+nlKeys.length+'" style="'+sNLDk+'">Năng lực</td>';
-  if(pcKeys.length>0) h+='<td colspan="'+pcKeys.length+'" style="'+sPCDk+'">Phẩm chất</td>';
-  tailKeys.forEach(function(){h+='<td rowspan="2" style="'+sTail+'">Lên<br>lớp</td>';});
-  h+='</tr>';
-
-  // SUBJECT NAMES
-  h+='<tr height="40">';
-  monCols.forEach(function(m){
-    if(m.hd){
-      h+='<td style="'+sMon+'">'+m.name+'<br><span style="font-size:7pt;color:#555">Mức đạt</span></td>';
-      h+='<td style="'+sMon+'">'+m.name+'<br><span style="font-size:7pt;color:#555">Điểm</span></td>';
-    }else{
-      h+='<td style="'+sMon+'">'+m.name+'</td>';
-    }
-  });
-  nlKeys.forEach(function(k){h+='<td style="'+sNL+'">'+_subjKeyToName(k)+'</td>';});
-  pcKeys.forEach(function(k){h+='<td style="'+sPC+'">'+_subjKeyToName(k)+'</td>';});
-  h+='</tr>';
-
-  // KEY ROW
-  h+='<tr height="1">';
-  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td>';
-  monKeyList.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  nlKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  pcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
-  h+='</tr>';
-
-  // DATA
-  allHS.forEach(function(s,i){
-    var g=grades[s.ma]||{};
-    h+='<tr height="26">';
-    h+='<td style="'+sData+'">'+(i+1)+'</td>';
-    h+='<td style="'+sData+'">'+s.lop+'</td>';
-    h+='<td style="'+sData+'">'+s.ma+'</td>';
-    h+='<td style="'+sName+'">'+s.ten+'</td>';
-    monCols.forEach(function(m){
-      var mv=g[m.key]||'';h+='<td style="'+sData+'">'+(mv?_storeToDisplay(mv,'mon'):'')+'</td>';
-      if(m.hd){var dk=_subjDiemKey(m.key,s.khoi);h+='<td style="'+sData+'">'+(dk&&g[dk]!==undefined?g[dk]:'')+'</td>';}
-    });
-    nlKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    pcKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
-    tailKeys.forEach(function(k){h+='<td style="'+sData+'">'+(g[k]||'')+'</td>';});
-    h+='</tr>';
-  });
-
-  // COL WIDTHS
-  var colW='<col width="35"><col width="40"><col width="90"><col width="170">';
-  monCols.forEach(function(m){if(m.hd){colW+='<col width="48"><col width="40">';}else{colW+='<col width="50">';}});
-  nlKeys.forEach(function(){colW+='<col width="55">';});
-  pcKeys.forEach(function(){colW+='<col width="55">';});
-  tailKeys.forEach(function(){colW+='<col width="55">';});
-
-  // XUẤT .htm
-  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
-    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
-    +'<x:Name>KetQua</x:Name>'
-    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal><x:TopRowBottomPane>4</x:TopRowBottomPane>'
-    +'<x:SplitVertical>4</x:SplitVertical><x:LeftColumnRightPane>4</x:LeftColumnRightPane></x:WorksheetOptions>'
-    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
-    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
-    +'<body><table>'+colW+h+'</table></body></html>';
-
-  var blob=new Blob([html],{type:'text/html'});
-  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='NhapDiem_'+(CU.hoten||CU.username).replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.htm';
-  a.click();URL.revokeObjectURL(a.href);
-  toast('📥 Mẫu '+periodName+': '+allHS.length+' HS ('+allLops.join(', ')+')','ok');
-}
 
 function onDiemFileGV(inp){
   if(!inp.files.length)return;
