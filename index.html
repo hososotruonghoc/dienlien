@@ -656,13 +656,13 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
   <div class="tb ao" id="d-import-admin" style="margin-bottom:6px">
     <button class="btn bpur" onclick="createMauChuan()">📥 Xuất file mẫu</button>
     <button class="btn bg" onclick="T('d-file-inp').click()">📤 Nhập từ Excel</button>
-    <input type="file" id="d-file-inp" accept=".xlsx,.xls,.csv" style="display:none" onchange="onDiemFile(this)">
+    <input type="file" id="d-file-inp" accept=".xlsx,.xls,.csv,.htm,.html" style="display:none" onchange="onDiemFile(this)">
     <span id="d-import-info" style="font-size:11px;color:var(--slate3)"></span>
   </div>
   <div class="tb gv-only" style="margin-bottom:6px" id="d-import-gv">
     <button class="btn bpur" onclick="dlMauGV()">📥 Tải mẫu theo phân công</button>
     <button class="btn bg" onclick="T('d-file-gv').click()">📤 Nhập kết quả từ Excel</button>
-    <input type="file" id="d-file-gv" accept=".xlsx,.xls,.csv" style="display:none" onchange="onDiemFileGV(this)">
+    <input type="file" id="d-file-gv" accept=".xlsx,.xls,.csv,.htm,.html" style="display:none" onchange="onDiemFileGV(this)">
     <span id="d-gv-info" style="font-size:11px;color:var(--slate3)"></span>
   </div>
   <div class="tw"><div class="ts" id="d-table-wrap">
@@ -852,7 +852,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       <div class="drop-zone" id="drop-zone" onclick="T('file-inp').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)">
         <div style="font-size:36px">📂</div><p><strong>Nhấn chọn file</strong> hoặc kéo thả</p>
       </div>
-      <input type="file" id="file-inp" accept=".xlsx,.xls,.csv" style="display:none" onchange="onFileChange(this)">
+      <input type="file" id="file-inp" accept=".xlsx,.xls,.csv,.htm,.html" style="display:none" onchange="onFileChange(this)">
       <div id="imp-preview"></div>
     </div>
   </div>
@@ -1721,135 +1721,127 @@ function createMauChuan(){
   var k=parseInt(lop);
   var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
   var periodCode={gk1:'GK1',ck1:'CK1',gk2:'GK2',cn:'CN'}[curPeriod]||'GK2';
-  var isMid=(curPeriod==='gk1'||curPeriod==='gk2');
   var isCN=(curPeriod==='cn');
-
   var hsLop=mySB().filter(function(s){return s.lop===lop;});
   if(!hsLop.length){toast('⚠️ Không có HS lớp '+lop,'warn');return;}
-
   var sj=_visibleSubj(k);
 
-  function hasDiem(mn){
-    if(!mn[2]||!mn[3]) return false;
-    if(!isMid) return true;
-    if(k>=4) return true;
-    return false;
-  }
-
-  // ═══ BUILD HEADERS ═══
-  var r1=['','','','',''];     // Group headers
-  var r2=['','','','',''];     // Sub headers
-  var r3=['STT','Mã lớp','Mã học sinh','Họ tên','Ngày sinh']; // Detail
-  var keyRow=['__KEYS__','_lop_','_ma_','_ten_','_ns_'];       // Key row
-  var merges=[];
-  var ci=5; // current column index
-
-  // Merge info cols (3 rows)
-  for(var i=0;i<5;i++) merges.push({s:{r:0,c:i},e:{r:2,c:i}});
-
-  // ── MÔN HỌC ──
-  var monStart=ci;
+  // ═══ XÁC ĐỊNH CỘT MÔN HỌC ═══
+  var monHeaders=[];
+  var monKeys=[];
   sj.forEach(function(mn){
-    var hd=hasDiem(mn);
-    if(hd){
-      r1.push('');r1.push('');
-      r2.push(mn[0]);r2.push('');
-      r3.push('Mức đạt');r3.push('Điểm KTĐK');
-      keyRow.push(mn[1]);keyRow.push(mn[2]);
-      merges.push({s:{r:1,c:ci},e:{r:1,c:ci+1}});
-      ci+=2;
-    }else{
-      r1.push('');
-      r2.push(mn[0]);
-      r3.push('');
-      keyRow.push(mn[1]);
-      merges.push({s:{r:1,c:ci},e:{r:2,c:ci}});
-      ci++;
-    }
+    var hd=_hasDiem(mn,k);
+    monHeaders.push({name:mn[0],key:mn[1],dk:hd?mn[2]:null,hd:hd});
+    monKeys.push(mn[1]);
+    if(hd) monKeys.push(mn[2]);
   });
-  var monEnd=ci-1;
-  r1[monStart]='Môn học và hoạt động giáo dục';
-  merges.push({s:{r:0,c:monStart},e:{r:0,c:monEnd}});
+  var totalMonCols=monHeaders.reduce(function(s,m){return s+(m.hd?2:1);},0);
 
-  // ── NĂNG LỰC CHUNG ──
-  var nlcStart=ci;
-  NL.slice(0,NL_CHUNG_IDX).forEach(function(nl){
-    r1.push('');r2.push('');r3.push(nl[0]);keyRow.push(nl[1]);
-    ci++;
+  // NL
+  var nlC=NL.slice(0,NL_CHUNG_IDX);
+  var nlD=_getNLDacThu(k);
+
+  // ═══ STYLES ═══
+  var bdr='border:0.5pt solid #aaa;';
+  var ctr='text-align:center;vertical-align:middle;';
+  var bold='font-weight:bold;';
+  var wrap='word-wrap:break-word;';
+  var sGreen='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
+  var sGreenDk='background:#92d050;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
+  var sBlue='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sOrangeDk='background:#f4b084;'+bdr+ctr+bold+'font-size:9pt;';
+  var sOrange='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sPurpleDk='background:#9bc2e6;'+bdr+ctr+bold+'font-size:9pt;';
+  var sPurple='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sYellow='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sData=bdr+ctr+'font-size:10pt;';
+  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
+  var sHide='font-size:1pt;color:#fff;border:none;height:1px;overflow:hidden;';
+
+  // ═══ BUILD HTML ═══
+  var h='';
+  var tailHeaders=isCN?['Hoàn thành<br>CT','Lên<br>lớp','Khen<br>thưởng']:[];
+  var tailKeys=isCN?['hoan_thanh','len_lop','khen_thuong']:[];
+
+  // ROW 1: Group headers
+  h+='<tr height="30">';
+  ['STT','Mã lớp','Mã học<br>sinh','Họ tên','Ngày<br>sinh'].forEach(function(c){h+='<td rowspan="3" style="'+sGreen+'">'+c+'</td>';});
+  h+='<td colspan="'+totalMonCols+'" style="'+sGreenDk+'">Môn học và hoạt động giáo dục</td>';
+  h+='<td colspan="'+(nlC.length+nlD.length)+'" style="'+sOrangeDk+'">Năng lực cốt lõi</td>';
+  h+='<td colspan="'+PC.length+'" style="'+sPurpleDk+'">Phẩm chất chủ yếu</td>';
+  tailHeaders.forEach(function(t){h+='<td rowspan="3" style="'+sYellow+'">'+t+'</td>';});
+  h+='</tr>';
+
+  // ROW 2: Mon names + NL sub-groups
+  h+='<tr height="25">';
+  monHeaders.forEach(function(m){
+    if(m.hd){h+='<td colspan="2" style="'+sBlue+'">'+m.name+'</td>';}
+    else{h+='<td rowspan="2" style="'+sBlue+'">'+m.name+'</td>';}
   });
-  var nlcEnd=ci-1;
-  r2[nlcStart]='Năng lực chung';
-  merges.push({s:{r:1,c:nlcStart},e:{r:1,c:nlcEnd}});
+  h+='<td colspan="'+nlC.length+'" style="'+sOrange+'">Năng lực chung</td>';
+  h+='<td colspan="'+nlD.length+'" style="'+sOrange+'">Năng lực đặc thù</td>';
+  PC.forEach(function(pc){h+='<td rowspan="2" style="'+sPurple+'">'+pc[0]+'</td>';});
+  h+='</tr>';
 
-  // ── NĂNG LỰC ĐẶC THÙ ──
-  var nldStart=ci;
-  var nlDacThu=_getNLDacThu(k);
-  nlDacThu.forEach(function(nl){
-    r1.push('');r2.push('');r3.push(nl[0]);keyRow.push(nl[1]);
-    ci++;
-  });
-  var nldEnd=ci-1;
-  r2[nldStart]='Năng lực đặc thù';
-  merges.push({s:{r:1,c:nldStart},e:{r:1,c:nldEnd}});
+  // ROW 3: Diem sub + NL detail
+  h+='<tr height="40">';
+  monHeaders.forEach(function(m){if(m.hd){h+='<td style="'+sBlue+'">Mức<br>đạt</td><td style="'+sBlue+'">Điểm<br>KTĐK</td>';}});
+  nlC.forEach(function(nl){h+='<td style="'+sOrange+'">'+nl[0]+'</td>';});
+  nlD.forEach(function(nl){h+='<td style="'+sOrange+'">'+nl[0]+'</td>';});
+  h+='</tr>';
 
-  r1[nlcStart]='Năng lực cốt lõi';
-  merges.push({s:{r:0,c:nlcStart},e:{r:0,c:nldEnd}});
+  // KEY ROW (ẩn)
+  h+='<tr height="1">';
+  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td><td style="'+sHide+'">_ns_</td>';
+  monKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  nlC.forEach(function(nl){h+='<td style="'+sHide+'">'+nl[1]+'</td>';});
+  nlD.forEach(function(nl){h+='<td style="'+sHide+'">'+nl[1]+'</td>';});
+  PC.forEach(function(pc){h+='<td style="'+sHide+'">'+pc[1]+'</td>';});
+  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  h+='</tr>';
 
-  // ── PHẨM CHẤT ──
-  var pcStart=ci;
-  PC.forEach(function(pc){
-    r1.push('');r2.push(pc[0]);r3.push('');keyRow.push(pc[1]);
-    merges.push({s:{r:1,c:ci},e:{r:2,c:ci}});
-    ci++;
-  });
-  var pcEnd=ci-1;
-  r1[pcStart]='Phẩm chất chủ yếu';
-  merges.push({s:{r:0,c:pcStart},e:{r:0,c:pcEnd}});
-
-  // ── CUỐI NĂM ──
-  if(isCN){
-    ['Hoàn thành CT','Lên lớp','Khen thưởng'].forEach(function(h){
-      r1.push(h);r2.push('');r3.push('');keyRow.push(h==='Lên lớp'?'len_lop':h==='Khen thưởng'?'khen_thuong':'hoan_thanh');
-      merges.push({s:{r:0,c:ci},e:{r:2,c:ci}});
-      ci++;
-    });
-  }
-
-  // ═══ DATA ROWS ═══
-  var dataRows=hsLop.map(function(s,i){
+  // DATA ROWS
+  hsLop.forEach(function(s,i){
     var g=grades[s.ma]||{};
-    var ns=String(s.ns||'');
-    if(ns.indexOf('GMT')>=0||ns.indexOf('T')>=0){
-      try{var d=new Date(ns);ns=('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();}catch(e){}
-    }
-    var row=[i+1,s.lop,String(s.ma),s.ten,ns];
-    sj.forEach(function(mn){
-      var mv=g[mn[1]]||'';
-      row.push(mv?_storeToDisplay(mv,'mon'):'');
-      if(hasDiem(mn)) row.push(g[mn[2]]||'');
+    h+='<tr height="26">';
+    h+='<td style="'+sData+'">'+(i+1)+'</td>';
+    h+='<td style="'+sData+'">'+s.lop+'</td>';
+    h+='<td style="'+sData+'">'+s.ma+'</td>';
+    h+='<td style="'+sName+'">'+s.ten+'</td>';
+    h+='<td style="'+sData+'">'+(s.ns||'')+'</td>';
+    monHeaders.forEach(function(m){
+      var mv=g[m.key]||'';h+='<td style="'+sData+'">'+(mv?_storeToDisplay(mv,'mon'):'')+'</td>';
+      if(m.hd){var dv=g[m.dk]||'';h+='<td style="'+sData+'">'+dv+'</td>';}
     });
-    NL.slice(0,NL_CHUNG_IDX).forEach(function(nl){var v=g[nl[1]]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
-    nlDacThu.forEach(function(nl){var v=g[nl[1]]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
-    PC.forEach(function(pc){var v=g[pc[1]]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
-    if(isCN){var kq=cTT(s.ma,s.khoi);row.push(kq?kqText(kq):'');row.push(g.len_lop||'');row.push('');}
-    return row;
+    nlC.forEach(function(nl){var v=g[nl[1]]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
+    nlD.forEach(function(nl){var v=g[nl[1]]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
+    PC.forEach(function(pc){var v=g[pc[1]]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
+    tailKeys.forEach(function(k){h+='<td style="'+sData+'">'+(g[k]||'')+'</td>';});
+    h+='</tr>';
   });
 
-  // ═══ BUILD XLSX ═══
-  var aoa=[r1,r2,r3,keyRow].concat(dataRows);
-  var ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!merges']=merges;
+  // COL WIDTHS
+  var colW='<col width="35"><col width="45"><col width="90"><col width="170"><col width="85">';
+  for(var i=0;i<totalMonCols;i++) colW+='<col width="55">';
+  for(var i=0;i<nlC.length+nlD.length;i++) colW+='<col width="60">';
+  for(var i=0;i<PC.length;i++) colW+='<col width="55">';
+  for(var i=0;i<tailHeaders.length;i++) colW+='<col width="60">';
 
-  // Col widths
-  var cols=[];
-  cols.push({wch:5},{wch:7},{wch:14},{wch:22},{wch:12});
-  for(var w=5;w<ci;w++) cols.push({wch:w<monEnd+1?8:9});
-  ws['!cols']=cols;
+  // XUẤT FILE .htm (không cảnh báo Excel)
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
+    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
+    +'<x:Name>'+periodCode+'_Lop'+lop+'</x:Name>'
+    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>5</x:SplitHorizontal><x:TopRowBottomPane>5</x:TopRowBottomPane>'
+    +'<x:SplitVertical>5</x:SplitVertical><x:LeftColumnRightPane>5</x:LeftColumnRightPane></x:WorksheetOptions>'
+    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
+    +'<body><table>'+colW+h+'</table></body></html>';
 
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,periodCode+'_Lop'+lop);
-  XLSX.writeFile(wb,'Mau_'+periodCode+'_Khoi'+k+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-  toast('📥 Đã tải: '+periodName+' — Lớp '+lop+' ('+hsLop.length+' HS)','ok');
+  var blob=new Blob([html],{type:'text/html'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='Mau_'+periodCode+'_Khoi'+k+'_Lop'+lop+'_'+new Date().toISOString().slice(0,10)+'.htm';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('📥 Đã tải mẫu '+periodName+' — Lớp '+lop+' ('+hsLop.length+' HS)','ok');
 }
 
 function onDiemFile(inp){
@@ -2093,18 +2085,12 @@ function _subjDiemKey(monKey,khoi){
 function dlMauGV(){
   var subjMap=_getGVSubjects();
   if(!subjMap){toast('⚠️ Không có phân công giảng dạy','warn');return;}
-
   var allLops=[];
-  Object.keys(subjMap).forEach(function(key){
-    subjMap[key].forEach(function(lop){if(allLops.indexOf(lop)<0)allLops.push(lop);});
-  });
+  Object.keys(subjMap).forEach(function(key){subjMap[key].forEach(function(lop){if(allLops.indexOf(lop)<0)allLops.push(lop);});});
   allLops.sort();
   if(!allLops.length){toast('⚠️ Không có lớp nào','warn');return;}
-
   var allHS=[];
-  allLops.forEach(function(lop){
-    mySB().filter(function(s){return s.lop===lop;}).forEach(function(s){allHS.push(s);});
-  });
+  allLops.forEach(function(lop){mySB().filter(function(s){return s.lop===lop;}).forEach(function(s){allHS.push(s);});});
   if(!allHS.length){toast('⚠️ Không có HS','warn');return;}
 
   var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
@@ -2112,27 +2098,25 @@ function dlMauGV(){
   var isCN=(curPeriod==='cn');
   var maxKhoi=Math.max.apply(null,allLops.map(function(l){return parseInt(l)||1;}));
 
-  // ═══ GOM CỘT ═══
+  // GOM CỘT
   var subjKeys=Object.keys(subjMap).filter(function(k){return k.indexOf('mon_')===0;});
-  var monCols=[];
-  var allKeys=[];  // flat keys for key row
-
+  var monCols=[], monKeyList=[];
   subjKeys.forEach(function(skey){
     var name=_subjKeyToName(skey);
     var anyDiem=allLops.some(function(lop){return _subjHasDiem(skey,parseInt(lop));});
     if(anyDiem){
       monCols.push({name:name,key:skey,dk:'diem_'+skey.replace('mon_',''),hd:true});
-      allKeys.push(skey);allKeys.push('diem_'+skey.replace('mon_',''));
+      monKeyList.push(skey);monKeyList.push('diem_'+skey.replace('mon_',''));
     }else{
       monCols.push({name:name,key:skey,dk:null,hd:false});
-      allKeys.push(skey);
+      monKeyList.push(skey);
     }
   });
+  var totalMonCols=monCols.reduce(function(s,m){return s+(m.hd?2:1);},0);
 
   var nlKeys=[], pcKeys=[];
   if(isGVCN){
-    var allNL=_getAllNL(maxKhoi);
-    allNL.forEach(function(nl){nlKeys.push(nl[1]);});
+    _getAllNL(maxKhoi).forEach(function(nl){nlKeys.push(nl[1]);});
     PC.forEach(function(pc){pcKeys.push(pc[1]);});
   }
   Object.keys(subjMap).forEach(function(k){
@@ -2141,85 +2125,103 @@ function dlMauGV(){
   });
   var tailKeys=isCN&&isGVCN?['len_lop']:[];
 
-  // ═══ BUILD HEADER ROWS ═══
-  var r1=['Mẫu nhập kết quả — '+(CU.hoten||CU.username)+' — '+periodName];
-  var totalCols=4; // STT, Lớp, Mã HS, Họ tên
-  monCols.forEach(function(m){totalCols+=m.hd?2:1;});
-  totalCols+=nlKeys.length+pcKeys.length+tailKeys.length;
-  for(var i=1;i<totalCols;i++) r1.push('');
+  // STYLES
+  var bdr='border:0.5pt solid #aaa;';
+  var ctr='text-align:center;vertical-align:middle;';
+  var bold='font-weight:bold;';
+  var wrap='word-wrap:break-word;';
+  var sInfo='background:#c6efce;'+bdr+ctr+bold+'font-size:9pt;'+wrap;
+  var sInfoDk='background:#2e7d32;'+bdr+ctr+bold+'font-size:10pt;color:#fff;text-align:left;padding-left:10px;';
+  var sMon='background:#d6e4f0;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sMonDk='background:#1565c0;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
+  var sNL='background:#fce4d6;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sNLDk='background:#e65100;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
+  var sPC='background:#e2d9f3;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sPCDk='background:#6a1b9a;'+bdr+ctr+bold+'font-size:9pt;color:#fff;';
+  var sTail='background:#fff2cc;'+bdr+ctr+bold+'font-size:8pt;'+wrap;
+  var sData=bdr+ctr+'font-size:10pt;';
+  var sName=bdr+'text-align:left;vertical-align:middle;font-size:10pt;';
+  var sHide='font-size:1pt;color:#fff;border:none;height:1px;overflow:hidden;';
 
-  // Row 2: Group headers
-  var r2=['STT','Lớp','Mã học sinh','Họ tên'];
-  var merges=[{s:{r:0,c:0},e:{r:0,c:totalCols-1}}]; // Title merge
+  // BUILD HTML
+  var totalCols=4+totalMonCols+nlKeys.length+pcKeys.length+tailKeys.length;
+  var h='';
 
-  var ci2=4;
-  var monStart2=ci2;
+  // TITLE
+  h+='<tr height="28"><td colspan="'+totalCols+'" style="'+sInfoDk+'">';
+  h+='📋 Mẫu nhập kết quả — '+(CU.hoten||CU.username)+' — '+periodName+'</td></tr>';
+
+  // GROUP HEADERS
+  h+='<tr height="28">';
+  ['STT','Lớp','Mã học<br>sinh','Họ tên'].forEach(function(c){h+='<td rowspan="2" style="'+sInfo+'">'+c+'</td>';});
+  if(totalMonCols>0) h+='<td colspan="'+totalMonCols+'" style="'+sMonDk+'">Môn học và hoạt động giáo dục</td>';
+  if(nlKeys.length>0) h+='<td colspan="'+nlKeys.length+'" style="'+sNLDk+'">Năng lực</td>';
+  if(pcKeys.length>0) h+='<td colspan="'+pcKeys.length+'" style="'+sPCDk+'">Phẩm chất</td>';
+  tailKeys.forEach(function(){h+='<td rowspan="2" style="'+sTail+'">Lên<br>lớp</td>';});
+  h+='</tr>';
+
+  // SUBJECT NAMES
+  h+='<tr height="40">';
   monCols.forEach(function(m){
-    if(m.hd){r2.push(m.name+' (ĐG)');r2.push(m.name+' (Điểm)');ci2+=2;}
-    else{r2.push(m.name);ci2++;}
+    if(m.hd){
+      h+='<td style="'+sMon+'">'+m.name+'<br><span style="font-size:7pt;color:#555">Mức đạt</span></td>';
+      h+='<td style="'+sMon+'">'+m.name+'<br><span style="font-size:7pt;color:#555">Điểm</span></td>';
+    }else{
+      h+='<td style="'+sMon+'">'+m.name+'</td>';
+    }
   });
-  var monEnd2=ci2-1;
-  nlKeys.forEach(function(k){r2.push(_subjKeyToName(k));ci2++;});
-  pcKeys.forEach(function(k){r2.push(_subjKeyToName(k));ci2++;});
-  tailKeys.forEach(function(){r2.push('Lên lớp');ci2++;});
+  nlKeys.forEach(function(k){h+='<td style="'+sNL+'">'+_subjKeyToName(k)+'</td>';});
+  pcKeys.forEach(function(k){h+='<td style="'+sPC+'">'+_subjKeyToName(k)+'</td>';});
+  h+='</tr>';
 
-  // Row 3: Key row
-  var r3=['__KEYS__','_lop_','_ma_','_ten_'];
-  monCols.forEach(function(m){
-    r3.push(m.key);
-    if(m.hd) r3.push(m.dk);
-  });
-  nlKeys.forEach(function(k){r3.push(k);});
-  pcKeys.forEach(function(k){r3.push(k);});
-  tailKeys.forEach(function(k){r3.push(k);});
+  // KEY ROW
+  h+='<tr height="1">';
+  h+='<td style="'+sHide+'">__KEYS__</td><td style="'+sHide+'">_lop_</td><td style="'+sHide+'">_ma_</td><td style="'+sHide+'">_ten_</td>';
+  monKeyList.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  nlKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  pcKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  tailKeys.forEach(function(k){h+='<td style="'+sHide+'">'+k+'</td>';});
+  h+='</tr>';
 
-  // ═══ DATA ROWS ═══
-  var dataRows=allHS.map(function(s,i){
+  // DATA
+  allHS.forEach(function(s,i){
     var g=grades[s.ma]||{};
-    var row=[i+1,s.lop,String(s.ma),s.ten];
+    h+='<tr height="26">';
+    h+='<td style="'+sData+'">'+(i+1)+'</td>';
+    h+='<td style="'+sData+'">'+s.lop+'</td>';
+    h+='<td style="'+sData+'">'+s.ma+'</td>';
+    h+='<td style="'+sName+'">'+s.ten+'</td>';
     monCols.forEach(function(m){
-      var mv=g[m.key]||'';
-      row.push(mv?_storeToDisplay(mv,'mon'):'');
-      if(m.hd){
-        var dk=_subjDiemKey(m.key,s.khoi);
-        row.push(dk&&g[dk]!==undefined?g[dk]:'');
-      }
+      var mv=g[m.key]||'';h+='<td style="'+sData+'">'+(mv?_storeToDisplay(mv,'mon'):'')+'</td>';
+      if(m.hd){var dk=_subjDiemKey(m.key,s.khoi);h+='<td style="'+sData+'">'+(dk&&g[dk]!==undefined?g[dk]:'')+'</td>';}
     });
-    nlKeys.forEach(function(k){var v=g[k]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
-    pcKeys.forEach(function(k){var v=g[k]||'';row.push(v?_storeToDisplay(v,'nlpc'):'');});
-    tailKeys.forEach(function(k){row.push(g[k]||'');});
-    return row;
+    nlKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
+    pcKeys.forEach(function(k){var v=g[k]||'';h+='<td style="'+sData+'">'+(v?_storeToDisplay(v,'nlpc'):'')+'</td>';});
+    tailKeys.forEach(function(k){h+='<td style="'+sData+'">'+(g[k]||'')+'</td>';});
+    h+='</tr>';
   });
 
-  // ═══ BUILD XLSX ═══
-  var aoa=[r1,r2,r3].concat(dataRows);
-  var ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!merges']=merges;
+  // COL WIDTHS
+  var colW='<col width="35"><col width="40"><col width="90"><col width="170">';
+  monCols.forEach(function(m){if(m.hd){colW+='<col width="48"><col width="40">';}else{colW+='<col width="50">';}});
+  nlKeys.forEach(function(){colW+='<col width="55">';});
+  pcKeys.forEach(function(){colW+='<col width="55">';});
+  tailKeys.forEach(function(){colW+='<col width="55">';});
 
-  // Col widths
-  var cols=[{wch:5},{wch:6},{wch:14},{wch:24}];
-  for(var w=4;w<totalCols;w++) cols.push({wch:10});
-  ws['!cols']=cols;
+  // XUẤT .htm
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
+    +'<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
+    +'<x:Name>KetQua</x:Name>'
+    +'<x:WorksheetOptions><x:FreezePanes/><x:FrozenNoSplit/><x:SplitHorizontal>4</x:SplitHorizontal><x:TopRowBottomPane>4</x:TopRowBottomPane>'
+    +'<x:SplitVertical>4</x:SplitVertical><x:LeftColumnRightPane>4</x:LeftColumnRightPane></x:WorksheetOptions>'
+    +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+    +'<style>td{font-family:Arial;mso-number-format:"\\@";}</style></head>'
+    +'<body><table>'+colW+h+'</table></body></html>';
 
-  // Hướng dẫn sheet
-  var hd=[
-    ['HƯỚNG DẪN NHẬP KẾT QUẢ — '+(CU.hoten||CU.username)],[''],
-    ['Phân công: '+(CU.phan_cong||'')],
-    ['Lớp: '+allLops.join(', ')],
-    ['Tổng: '+allHS.length+' HS'],[''],
-    ['CÁCH NHẬP:'],
-    ['- Cột ĐG (đánh giá): T = Hoàn thành tốt, H = Hoàn thành, C = Chưa hoàn thành'],
-    ['- Cột Điểm: số 0 đến 10'],
-    ['- NL/PC: T = Tốt, Đ = Đạt, C = Chưa đạt'],[''],
-    ['KHÔNG sửa STT, Lớp, Mã HS. Có thể để trống ô chưa có KQ.']
-  ];
-  var ws2=XLSX.utils.aoa_to_sheet(hd);
-  ws2['!cols']=[{wch:60}];
-
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'KetQua');
-  XLSX.utils.book_append_sheet(wb,ws2,'HuongDan');
-  XLSX.writeFile(wb,'NhapDiem_'+(CU.hoten||CU.username).replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  var blob=new Blob([html],{type:'text/html'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='NhapDiem_'+(CU.hoten||CU.username).replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.htm';
+  a.click();URL.revokeObjectURL(a.href);
   toast('📥 Mẫu '+periodName+': '+allHS.length+' HS ('+allLops.join(', ')+')','ok');
 }
 
