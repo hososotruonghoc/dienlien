@@ -657,12 +657,14 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
     <button class="btn bpur" onclick="createMauChuan()">📥 Xuất file mẫu</button>
     <button class="btn bg" onclick="T('d-file-inp').click()">📤 Nhập từ Excel</button>
     <input type="file" id="d-file-inp" accept=".xlsx,.xls,.csv" style="display:none" onchange="onDiemFile(this)">
+    <button class="btn bout" onclick="clearGradesLop()" style="color:var(--rose);border-color:var(--rose)">🗑 Xóa KQ cả lớp</button>
     <span id="d-import-info" style="font-size:11px;color:var(--slate3)"></span>
   </div>
   <div class="tb gv-only" style="margin-bottom:6px" id="d-import-gv">
     <button class="btn bpur" onclick="dlMauGV()">📥 Tải mẫu theo phân công</button>
     <button class="btn bg" onclick="T('d-file-gv').click()">📤 Nhập kết quả từ Excel</button>
     <input type="file" id="d-file-gv" accept=".xlsx,.xls,.csv" style="display:none" onchange="onDiemFileGV(this)">
+    <button class="btn bout" onclick="clearGradesLop()" style="color:var(--rose);border-color:var(--rose)">🗑 Xóa KQ cả lớp</button>
     <span id="d-gv-info" style="font-size:11px;color:var(--slate3)"></span>
   </div>
   <div class="tw"><div class="ts" id="d-table-wrap">
@@ -2750,7 +2752,59 @@ async function clearGrades(){
   merge();updateAll();
 }
 
-// SAVE
+// ═══ XÓA KQ CẢ LỚP ═══
+async function clearGradesLop(){
+  var lop=T('d-lop').value;
+  if(!lop){toast('⚠️ Chọn lớp trước','warn');return;}
+  if(lockedPeriods[curPeriod]&&CU&&CU.role!=='admin'){toast('🔒 Kỳ đang bị khóa','warn');return;}
+  var periodName=PERIODS.find(function(p){return p.id===curPeriod;}).name;
+  var hsLop=mySB().filter(function(s){return s.lop===lop;});
+  if(!hsLop.length){toast('⚠️ Không có HS','warn');return;}
+
+  // Kiểm tra quyền: admin hoặc GV được phân công lớp này
+  var isAdmin=CU&&CU.role==='admin';
+  var isGVCN=CU&&CU.lop&&CU.lop.trim()===lop;
+  var hasPermLop=userPerm&&userPerm[lop];
+  if(!isAdmin&&!isGVCN&&!hasPermLop){toast('⚠️ Bạn không có quyền xóa lớp này','warn');return;}
+
+  var count=hsLop.filter(function(s){return grades[s.ma]&&Object.keys(grades[s.ma]).length>0;}).length;
+  if(!count){toast('ℹ️ Lớp '+lop+' chưa có dữ liệu','ok');return;}
+
+  if(!confirm('⚠️ XÓA TOÀN BỘ KẾT QUẢ\n\n📋 Lớp: '+lop+' ('+count+'/'+hsLop.length+' HS có dữ liệu)\n📅 Kỳ: '+periodName+'\n\n❌ Thao tác này KHÔNG THỂ hoàn tác!\n\nBạn chắc chắn?'))return;
+  if(!confirm('🔴 XÁC NHẬN LẦN 2:\n\nXóa '+count+' HS lớp '+lop+' kỳ '+periodName+'?'))return;
+
+  // Xóa local
+  var deleted=0;
+  hsLop.forEach(function(s){
+    if(grades[s.ma]){
+      delete grades[s.ma];
+      delete _dirtyGrades[s.ma];
+      deleted++;
+    }
+  });
+  _saveGradesToStorage();
+
+  // Xóa trên Sheets
+  if(GAS){
+    loader('🗑 Đang xóa '+deleted+' HS trên Sheets...');
+    var ok=0,fail=0;
+    for(var i=0;i<hsLop.length;i++){
+      var s=hsLop[i];
+      try{
+        var r=await gasPost({action:'deleteGrade',ma:s.ma,period:curPeriod});
+        if(r.ok) ok++; else fail++;
+      }catch(e){fail++;}
+      if(i%5===0) T('ldr-t').textContent='🗑 '+(i+1)+'/'+hsLop.length;
+    }
+    loader();
+    if(fail===0) toast('🗑 Đã xóa '+ok+' HS lớp '+lop+' ('+periodName+')','ok');
+    else toast('⚠️ Xóa: '+ok+' OK, '+fail+' lỗi','warn');
+  }else{
+    toast('🗑 Đã xóa local: '+deleted+' HS lớp '+lop,'ok');
+  }
+
+  merge();updateAll();
+}
 function saveCld(){
   if(lockedPeriods[curPeriod]&&CU&&CU.role!=='admin'){toast('🔒 Kỳ đang bị khóa, không thể lưu','warn');return;}
   if(eIdx===null)return;if(document.querySelectorAll('.diemw input.inv').length){toast('❌ Điểm không hợp lệ','err');return;}
