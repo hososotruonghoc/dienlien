@@ -1110,6 +1110,7 @@ var nhanXet={},hbIdx=null,hbFiltered=[];
 
 // ═══ AUTO-SAVE STATE ═══
 var _dirtyGrades={};    // {ma: gradeObj} — các HS đã thay đổi chưa lưu lên Sheets
+var _recentlySaved={};  // {ma: timestamp} — các HS vừa lưu xong, chờ sync bỏ qua
 var _autoSaveTimer=null;
 var _autoSaveInterval=45000; // 45 giây
 var _autoSaving=false;
@@ -1237,7 +1238,11 @@ async function _flushAutoSave(){
   if(!keys.length) return;
 
   _autoSaving=true;
-  var batch=keys.map(function(ma){return{ma:ma,grades:_dirtyGrades[ma]};});
+  var batch=keys.map(function(ma){
+    var gObj=_dirtyGrades[ma];
+    var clearKeys=Object.keys(gObj).filter(function(k){return gObj[k]===''&&k.indexOf('_')!==0;});
+    return{ma:ma,grades:gObj,clearKeys:clearKeys};
+  });
   // Xóa dirty trước khi gửi (nếu lỗi sẽ đánh dấu lại)
   var savedBatch=JSON.parse(JSON.stringify(_dirtyGrades));
   _dirtyGrades={};
@@ -1251,6 +1256,9 @@ async function _flushAutoSave(){
     });
     _autoSaving=false;
     if(r.ok&&r.saved>0){
+      // Đánh dấu vừa lưu thành công → sync không ghi đè
+      var now=Date.now();
+      keys.forEach(function(ma){_recentlySaved[ma]=now;});
       sUI('ok');
       var ts=new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
       T('slbl').textContent='Tự động lưu '+ts+' ('+r.saved+' HS)';
@@ -1277,7 +1285,11 @@ window.addEventListener('beforeunload',function(e){
     // Cố gửi sync bằng sendBeacon
     var payload=JSON.stringify({
       action:'autoSave',period:curPeriod,
-      changes:Object.keys(_dirtyGrades).map(function(ma){return{ma:ma,grades:_dirtyGrades[ma]};}),
+      changes:Object.keys(_dirtyGrades).map(function(ma){
+        var gObj=_dirtyGrades[ma];
+        var ck=Object.keys(gObj).filter(function(k){return gObj[k]===''&&k.indexOf('_')!==0;});
+        return{ma:ma,grades:gObj,clearKeys:ck};
+      }),
       user:CU?CU.username:'?'
     });
     navigator.sendBeacon(GAS+'?gaspost=1&d='+encodeURIComponent(payload));
@@ -1450,7 +1462,25 @@ async function syncNow(silent){
       var remote=rG.data||{};
       if(syncPeriod===curPeriod){
         var newGrades={};
-        Object.keys(remote).forEach(function(k){newGrades[k]=remote[k];});
+        var now=Date.now();
+        // Dọn dẹp _recentlySaved cũ hơn 30 giây
+        Object.keys(_recentlySaved).forEach(function(m){if(now-_recentlySaved[m]>30000)delete _recentlySaved[m];});
+        Object.keys(remote).forEach(function(k){
+          // Không ghi đè HS đang chờ auto-save hoặc vừa lưu thủ công xong
+          if(_dirtyGrades[k]||(_recentlySaved[k]&&now-_recentlySaved[k]<30000)){
+            newGrades[k]=grades[k]||remote[k]; // giữ bản local
+          } else {
+            newGrades[k]=remote[k];
+          }
+        });
+        // Giữ lại HS dirty local mà remote chưa có (vd: HS mới thêm)
+        Object.keys(_dirtyGrades).forEach(function(k){
+          if(!newGrades[k]&&grades[k]) newGrades[k]=grades[k];
+        });
+        // Giữ lại HS vừa xóa (recentlySaved + grades đã delete)
+        Object.keys(_recentlySaved).forEach(function(k){
+          if(now-_recentlySaved[k]<30000&&!grades[k]) delete newGrades[k];
+        });
         grades=newGrades;
         allGrades[curPeriod]=newGrades;
         try{localStorage.setItem('_allGrades',JSON.stringify(allGrades));}catch(e){}
@@ -2681,11 +2711,11 @@ function colG(){
     var r=document.querySelector('input[name="m_'+mk+'"]:checked:not(:disabled)');
     if(r) g[mk]=r.value;
     else {
-      // Radio bị bỏ chọn (toggle-off) → xóa giá trị cũ
+      // Radio bị bỏ chọn (toggle-off) → gán rỗng để GAS xóa ô trên Sheets
       var anyExists=document.querySelector('input[name="m_'+mk+'"]');
-      if(anyExists&&!anyExists.disabled) delete g[mk];
+      if(anyExists&&!anyExists.disabled) g[mk]='';
     }
-    if(dk){var d=T('fd_'+dk);if(d&&!d.disabled){if(d.value.trim()!=='')g[dk]=String(parseInt(d.value)||0);else delete g[dk];}}
+    if(dk){var d=T('fd_'+dk);if(d&&!d.disabled){if(d.value.trim()!=='')g[dk]=String(parseInt(d.value)||0);else g[dk]='';}}
   });
   var canNLPC=!CU||CU.role==='admin'||!!(CU.lop&&CU.lop.trim());
   if(canNLPC){
@@ -2693,16 +2723,16 @@ function colG(){
     allNL.forEach(function(nl){
       var r=document.querySelector('input[name="nl_'+nl[1]+'"]:checked');
       if(r) g[nl[1]]=r.value;
-      else { var e2=document.querySelector('input[name="nl_'+nl[1]+'"]');if(e2) delete g[nl[1]]; }
+      else { var e2=document.querySelector('input[name="nl_'+nl[1]+'"]');if(e2) g[nl[1]]=''; }
     });
     PC.forEach(function(pc){
       var r=document.querySelector('input[name="pc_'+pc[1]+'"]:checked');
       if(r) g[pc[1]]=r.value;
-      else { var e3=document.querySelector('input[name="pc_'+pc[1]+'"]');if(e3) delete g[pc[1]]; }
+      else { var e3=document.querySelector('input[name="pc_'+pc[1]+'"]');if(e3) g[pc[1]]=''; }
     });
     if(curPeriod==='cn'){
-      var ll=document.querySelector('input[name="r_ll"]:checked');if(ll)g.len_lop=ll.value;else delete g.len_lop;
-      var tb=document.querySelector('input[name="r_tb"]:checked');if(tb)g._tieubieu=tb.value;else delete g._tieubieu;
+      var ll=document.querySelector('input[name="r_ll"]:checked');if(ll)g.len_lop=ll.value;else g.len_lop='';
+      var tb=document.querySelector('input[name="r_tb"]:checked');if(tb)g._tieubieu=tb.value;else g._tieubieu='';
       var kq=cTT(s.ma,s.khoi);if(kq){g.hoan_thanh=kq==='CHT'?'CHT':'HT';g.kqgd=kq;}
     }
   }
@@ -2736,6 +2766,7 @@ async function clearGrades(){
   // Xóa local
   delete grades[s.ma];
   delete _dirtyGrades[s.ma];
+  _recentlySaved[s.ma]=Date.now(); // Bảo vệ khỏi sync khôi phục dữ liệu cũ
   _saveGradesToStorage();
 
   // Xóa trên Sheets
@@ -2785,6 +2816,7 @@ async function clearGradesLop(){
     if(grades[s.ma]){
       delete grades[s.ma];
       delete _dirtyGrades[s.ma];
+      _recentlySaved[s.ma]=Date.now(); // Bảo vệ khỏi sync khôi phục
       deleted++;
     }
   });
@@ -2817,12 +2849,20 @@ function saveCld(){
   var s=SB[eIdx],g=colG();g.updated_at=new Date().toLocaleString('vi-VN');g.updated_by=CU?CU.username:'?';
   grades[s.ma]=g;_saveGradesToStorage();
   delete _dirtyGrades[s.ma]; // Xóa khỏi auto-save queue vì sẽ lưu thủ công
+  _recentlySaved[s.ma]=Date.now(); // Bảo vệ khỏi sync ghi đè
   cm('mBg');updateAll();
   if(!GAS){toast('⚠️ Chỉ lưu tạm trên máy','warn');return;}
   loader('Đang lưu lên Sheets...');
   function doSave(retry){
-    gasPost({action:'saveGrade',ma:s.ma,grades:g,user:CU?CU.username:'?',period:curPeriod}).then(function(r){
-      loader();if(r.ok)toast('☁️ Đã lưu: '+s.ten+' → '+PERIODS.find(function(p){return p.id===curPeriod;}).name,'ok');else toast('❌ '+r.error,'err');
+    // Tách các key có giá trị rỗng = cần xóa ô trên Sheets
+    var clearKeys=Object.keys(g).filter(function(k){return g[k]===''&&k.indexOf('_')!==0;});
+    gasPost({action:'saveGrade',ma:s.ma,grades:g,clearKeys:clearKeys,user:CU?CU.username:'?',period:curPeriod}).then(function(r){
+      loader();if(r.ok){
+        // Dọn dẹp key rỗng local sau khi Sheets đã xóa thành công
+        Object.keys(grades[s.ma]||{}).forEach(function(k){if(grades[s.ma][k]==='')delete grades[s.ma][k];});
+        _saveGradesToStorage();
+        toast('☁️ Đã lưu: '+s.ten+' → '+PERIODS.find(function(p){return p.id===curPeriod;}).name,'ok');
+      }else toast('❌ '+r.error,'err');
     }).catch(function(e){
       if(retry<2){setTimeout(function(){doSave(retry+1);},1500);}
       else{loader();toast('⚠️ Lưu local OK, chưa lên Sheets','warn');_markDirty(s.ma);}
@@ -2836,10 +2876,18 @@ function saveAllLop(){
   var batch;
   if(lop){
     // Lưu theo lớp đã chọn
-    batch=dF.filter(function(s){return grades[s.ma]&&canE(s.lop);}).map(function(s){return{ma:s.ma,grades:grades[s.ma]};});
+    batch=dF.filter(function(s){return grades[s.ma]&&canE(s.lop);}).map(function(s){
+      var gObj=grades[s.ma];
+      var ck=Object.keys(gObj).filter(function(k){return gObj[k]===''&&k.indexOf('_')!==0;});
+      return{ma:s.ma,grades:gObj,clearKeys:ck};
+    });
   }else{
     // GV: lưu tất cả HS có quyền (sau khi nhập Excel)
-    batch=allS.filter(function(s){return grades[s.ma]&&canE(s.lop);}).map(function(s){return{ma:s.ma,grades:grades[s.ma]};});
+    batch=allS.filter(function(s){return grades[s.ma]&&canE(s.lop);}).map(function(s){
+      var gObj=grades[s.ma];
+      var ck=Object.keys(gObj).filter(function(k){return gObj[k]===''&&k.indexOf('_')!==0;});
+      return{ma:s.ma,grades:gObj,clearKeys:ck};
+    });
   }
   if(!batch.length){toast('ℹ️ Không có điểm để lưu','warn');return;}
   if(batch.length>50&&!confirm('Lưu '+batch.length+' HS lên Sheets?'))return;
