@@ -626,7 +626,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
     <select id="hs-nt" onchange="hsFil()"><option value="">Trạng thái</option><option value="done">Đã nhập</option><option value="todo">Chưa nhập</option></select>
     <button class="btn bout" onclick="hsRst()">↺</button>
     <button class="btn bp ao" onclick="openAddHS()">➕ Thêm HS</button>
-    <button class="btn bg" onclick="if(needAdmin())expExcel()">⬇ Excel</button>
+    <button class="btn bg" onclick="expExcel()">⬇ Excel</button>
     <span class="rc" id="hs-rc"></span>
   </div>
   <div class="tw"><div class="ts">
@@ -712,7 +712,7 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       <tbody id="tk-tb"></tbody></table>
     </div>
     <div style="padding:12px 16px;border-top:1px solid var(--slate6);display:flex;gap:8px">
-      <button class="btn bg" onclick="if(needAdmin())expTKXL()">⬇ Excel</button>
+      <button class="btn bg" onclick="expTKXL()">⬇ Excel</button>
       <button class="btn bout" onclick="if(needAdmin())expBangCLWord()">📄 Bảng CL Word</button>
     </div>
   </div>
@@ -741,24 +741,24 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       Báo cáo kết quả đánh giá
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
-      <div class="ccard admin-act" style="cursor:pointer;border-left:4px solid #4f46e5;padding:18px 20px" onclick="if(needAdmin())expBangKQDG()">
+      <div class="ccard" style="cursor:pointer;border-left:4px solid #4f46e5;padding:18px 20px" onclick="expBangKQDG()">
         <div class="cc-ico" style="background:#e0e7ff;font-size:22px">📝</div>
         <div>
           <div style="font-weight:700;font-size:14px;color:var(--navy)">Bảng kết quả đánh giá <span class="adm-badge" style="background:var(--blue);color:#fff">Theo kỳ</span></div>
           <div class="cc-lbl" style="margin-top:4px;line-height:1.6">Xuất chi tiết từng môn (T/Đ/C + Điểm) + NL + PC theo lớp. Dùng cho báo cáo giữa kỳ / cuối kỳ</div>
         </div>
       </div>
-      <div class="ccard admin-act" style="cursor:pointer;border-left:4px solid var(--blue);padding:18px 20px" onclick="if(needAdmin())expExcel()">
+      <div class="ccard" style="cursor:pointer;border-left:4px solid var(--blue);padding:18px 20px" onclick="expExcel()">
         <div class="cc-ico" style="background:var(--blue-xl);font-size:22px">📊</div>
         <div>
-          <div style="font-weight:700;font-size:14px;color:var(--navy)">Kết quả học tập <span class="adm-badge">Admin</span></div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy)">Kết quả học tập</div>
           <div class="cc-lbl" style="margin-top:4px;line-height:1.6">Xuất danh sách HS kèm KQGD (Hoàn thành xuất sắc, Hoàn thành tốt, Hoàn thành, Chưa HT)</div>
         </div>
       </div>
-      <div class="ccard admin-act" style="cursor:pointer;border-left:4px solid var(--emerald);padding:18px 20px" onclick="if(needAdmin())expTKXL()">
+      <div class="ccard" style="cursor:pointer;border-left:4px solid var(--emerald);padding:18px 20px" onclick="expTKXL()">
         <div class="cc-ico" style="background:var(--emerald-l);font-size:22px">📈</div>
         <div>
-          <div style="font-weight:700;font-size:14px;color:var(--navy)">Thống kê chất lượng <span class="adm-badge">Admin</span></div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy)">Thống kê chất lượng</div>
           <div class="cc-lbl" style="margin-top:4px;line-height:1.6">Tổng hợp số liệu theo từng lớp: sĩ số, tỉ lệ HT, khen thưởng, lên lớp</div>
         </div>
       </div>
@@ -779,10 +779,10 @@ body:not(.is-admin) .ao .cc-lbl::after{content:' (Chỉ Admin)';color:var(--rose
       Học bạ số
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
-      <div class="ccard admin-act" style="cursor:pointer;border-left:4px solid var(--violet);padding:18px 20px" onclick="if(needAdmin())gp('pg-hocba')">
+      <div class="ccard" style="cursor:pointer;border-left:4px solid var(--violet);padding:18px 20px" onclick="gp('pg-hocba')">
         <div class="cc-ico" style="background:var(--violet-l);font-size:22px">📋</div>
         <div>
-          <div style="font-weight:700;font-size:14px;color:var(--navy)">Xuất học bạ (Word) <span class="adm-badge">Admin</span></div>
+          <div style="font-weight:700;font-size:14px;color:var(--navy)">Xuất học bạ (Word)</div>
           <div class="cc-lbl" style="margin-top:4px;line-height:1.6">Vào module Học bạ số để xuất học bạ từng HS hoặc cả lớp theo mẫu TT27</div>
         </div>
       </div>
@@ -2924,8 +2924,12 @@ function expBangKQDG(){
 
   // Load allUsers nếu chưa có
   function doExport(){
+    var isAdmin=CU&&CU.role==='admin';
+    var gvLop=CU&&CU.lop?CU.lop.trim():'';
+    if(!isAdmin&&!gvLop){toast('⚠️ Bạn chưa được phân công lớp chủ nhiệm','warn');return;}
     var lopSet={};allS.forEach(function(s){lopSet[s.lop]=1;});
     var lops=Object.keys(lopSet).sort();
+    if(!isAdmin) lops=lops.filter(function(l){return l===gvLop;});
     if(!lops.length){toast('⚠️ Không có dữ liệu','warn');return;}
     var mucMap={HTT:'T',HT:'H',CHT:'C'};
     var nlpcMap={T:'T','Đ':'Đ',CCG:'C'};
@@ -3121,8 +3125,31 @@ function expBangKQDG(){
   }
 }
 
-function expExcel(){var KL={HTXS:'HT Xuất sắc',HTT:'HT Tốt',HT:'Hoàn thành',CHT:'Chưa HT'};var rows=hsF.map(function(s){var g=grades[s.ma]||{},kq=cTT(s.ma,s.khoi);return[s.lop,s.ma,s.ten,s.ns,s.gt,KL[kq]||'',g.len_lop||''];});var ws=XLSX.utils.aoa_to_sheet([['Lớp','Mã','Họ tên','Ngày sinh','GT','KQGD','Lên lớp']].concat(rows));var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'KQHT');XLSX.writeFile(wb,'KQHT_'+new Date().toISOString().slice(0,10)+'.xlsx');toast('⬇️ Xuất Excel','ok');}
-function expTKXL(){var lopSet={};allS.forEach(function(s){lopSet[s.lop]=1;});var lops=Object.keys(lopSet).sort();var rows=lops.map(function(lop){var d=cLop(allS.filter(function(s){return s.lop===lop;}));return['Lớp '+lop,d.tot,d.nhap,d.htxs,d.htt,d.ht,d.cht,d.nhap?Math.round((d.htxs+d.htt+d.ht)/d.nhap*100)+'%':'0%',d.xs,d.tb,d.ll];});var ws=XLSX.utils.aoa_to_sheet([['Lớp','SS','Đã nhập','HT XS','HT Tốt','HT','Chưa HT','%HT','Khen XS','Khen TB','Lên lớp']].concat(rows));var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'ThốngKê');XLSX.writeFile(wb,'ThongKe_'+new Date().toISOString().slice(0,10)+'.xlsx');toast('⬇️ Xuất thống kê','ok');}
+function expExcel(){
+  var isAdmin=CU&&CU.role==='admin';
+  var gvLop=CU&&CU.lop?CU.lop.trim():'';
+  if(!isAdmin&&!gvLop){toast('⚠️ Bạn chưa được phân công lớp chủ nhiệm','warn');return;}
+  var KL={HTXS:'HT Xuất sắc',HTT:'HT Tốt',HT:'Hoàn thành',CHT:'Chưa HT'};
+  var list=isAdmin?hsF:hsF.filter(function(s){return s.lop===gvLop;});
+  if(!list.length){toast('⚠️ Không có HS','warn');return;}
+  var rows=list.map(function(s){var g=grades[s.ma]||{},kq=cTT(s.ma,s.khoi);return[s.lop,s.ma,s.ten,s.ns,s.gt,KL[kq]||'',g.len_lop||''];});
+  var ws=XLSX.utils.aoa_to_sheet([['Lớp','Mã','Họ tên','Ngày sinh','GT','KQGD','Lên lớp']].concat(rows));
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'KQHT');
+  XLSX.writeFile(wb,'KQHT_'+(isAdmin?'':gvLop+'_')+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('⬇️ Xuất Excel'+(isAdmin?'':' — Lớp '+gvLop),'ok');
+}
+function expTKXL(){
+  var isAdmin=CU&&CU.role==='admin';
+  var gvLop=CU&&CU.lop?CU.lop.trim():'';
+  if(!isAdmin&&!gvLop){toast('⚠️ Bạn chưa được phân công lớp chủ nhiệm','warn');return;}
+  var src=isAdmin?allS:allS.filter(function(s){return s.lop===gvLop;});
+  var lopSet={};src.forEach(function(s){lopSet[s.lop]=1;});var lops=Object.keys(lopSet).sort();
+  var rows=lops.map(function(lop){var d=cLop(src.filter(function(s){return s.lop===lop;}));return['Lớp '+lop,d.tot,d.nhap,d.htxs,d.htt,d.ht,d.cht,d.nhap?Math.round((d.htxs+d.htt+d.ht)/d.nhap*100)+'%':'0%',d.xs,d.tb,d.ll];});
+  var ws=XLSX.utils.aoa_to_sheet([['Lớp','SS','Đã nhập','HT XS','HT Tốt','HT','Chưa HT','%HT','Khen XS','Khen TB','Lên lớp']].concat(rows));
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'ThốngKê');
+  XLSX.writeFile(wb,'ThongKe_'+(isAdmin?'':gvLop+'_')+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('⬇️ Xuất thống kê'+(isAdmin?'':' — Lớp '+gvLop),'ok');
+}
 
 
 // ┌──────────────────────────────────────────────────────────┐
